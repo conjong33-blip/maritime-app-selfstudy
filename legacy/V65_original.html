@@ -1,0 +1,2523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해기사 튜터 - AI 기반 학습 플랫폼</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- FontAwesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Chart.js for Teacher Dashboard -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- KaTeX (수학 공식 렌더링 라이브러리) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght=300;400;600;700;800&display=swap');
+body {
+font-family: 'Pretendard', sans-serif;
+}
+/* Custom Scrollbar for sleek UI */
+::-webkit-scrollbar {
+width: 6px;
+height: 6px;
+}
+::-webkit-scrollbar-track {
+background: #1C2541;
+}
+::-webkit-scrollbar-thumb {
+background: #3A506B;
+border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+background: #5BC0BE;
+}
+/* 윗선(Overline) 전용 스타일 클래스 */
+.overline {
+text-decoration: overline;
+}
+/* KaTeX 수식 여백 및 크기 세부 조정 */
+.katex-display {
+margin: 0.5em 0 !important;
+overflow-x: auto;
+overflow-y: hidden;
+}
+.katex {
+font-size: 1.05em !important;
+}
+</style>
+</head>
+<body class="bg-[#0B132B] text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+<!-- Top Navigation Header -->
+<header class="bg-[#1C2541] border-b border-[#3A506B]/50 px-4 py-2.5 flex justify-between items-center shadow-lg">
+<div class="flex items-center space-x-3">
+<div class="bg-gradient-to-tr from-[#5BC0BE] to-[#3A506B] p-2.5 rounded-xl shadow-md shadow-[#5BC0BE]/20">
+<i class="fa-solid fa-anchor text-white text-xl"></i>
+</div>
+<div>
+<h1 class="text-lg font-extrabold tracking-wide text-white flex items-center gap-2">
+해기사 튜터
+</h1>
+<p class="text-xs text-slate-400">해기사 시험 대비</p>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<!-- Student Info Display (Header) -->
+<div id="header-student-badge" class="hidden bg-[#0B132B]/60 px-4 py-2 rounded-xl border border-[#3A506B] flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+<span id="display-student-id" class="text-xs font-bold text-slate-300"></span>
+<button id="header-logout-btn" onclick="logoutToLobby()" class="text-xs text-rose-400 hover:text-rose-300 transition ml-2">
+<i class="fa-solid fa-sign-out-alt"></i> 로그아웃
+</button>
+</div>
+<!-- Back to Lobby Button in Header -->
+<button id="header-back-to-lobby-btn" onclick="logoutToLobby()" class="hidden bg-[#3A506B]/50 hover:bg-[#3A506B] text-slate-200 hover:text-white px-4 py-2 rounded-xl border border-[#3A506B] text-xs font-semibold transition flex items-center gap-1.5">
+<i class="fa-solid fa-house"></i> 대기실로 돌아가기
+</button>
+<!-- Teacher Dashboard Access -->
+<button id="header-teacher-btn" onclick="openTeacherAuthModal()" class="bg-[#3A506B]/50 hover:bg-[#3A506B] text-slate-200 hover:text-white px-4 py-2 rounded-xl border border-[#3A506B] text-xs font-semibold transition flex items-center gap-2">
+<i class="fa-solid fa-chart-line text-[#5BC0BE]"></i> 교사용
+</button>
+</div>
+</header>
+<main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6">
+<!-- LOBBY SCREEN (Lobby & Unified Setup View) -->
+<div id="lobby-screen" class="max-w-2xl mx-auto my-4 bg-[#1C2541] rounded-2xl p-5 md:p-8 border border-[#3A506B]/50 shadow-2xl relative overflow-hidden animate-fadeIn">
+<div class="absolute -top-40 -right-40 w-80 h-80 bg-[#5BC0BE]/10 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-40 -left-40 w-80 h-80 bg-[#3A506B]/20 rounded-full blur-3xl"></div>
+<div class="relative z-10">
+<div class="text-right mb-4">
+<span class="text-[#5BC0BE] font-bold text-xs uppercase tracking-widest bg-[#5BC0BE]/10 px-3 py-1 rounded-full border border-[#5BC0BE]/20">Smart LMS Platform</span>
+</div>
+<!-- Supabase Key Warning Box -->
+<div id="supabase-key-warning" class="hidden mb-6 bg-amber-950/40 border border-amber-600/40 text-amber-200 p-4 rounded-2xl text-xs flex items-start gap-3 animate-fadeIn">
+<i class="fa-solid fa-triangle-exclamation text-amber-400 text-lg mt-0.5"></i>
+<div>
+<p class="font-bold mb-1">데이터베이스 키 미설정 상태 (데모 모드로 동작)</p>
+<p class="leading-relaxed text-slate-400">현재 Supabase URL과 Key가 기본값입니다. 코드 상단(SUPABASE_URL, SUPABASE_ANON_KEY)에 실제 키를 넣으시면 실시간 DB 데이터가 연동되며, 미설정 시 내장 기출 가상 데이터로 정상 실행됩니다.</p>
+</div>
+</div>
+<!-- Debug Connection Error Box -->
+<div id="connection-error-box" class="hidden mb-6 bg-rose-950/40 border border-rose-600/40 text-rose-200 p-4 rounded-2xl text-xs flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<i class="fa-solid fa-circle-exclamation text-rose-400 text-base"></i>
+<span class="font-bold">Supabase 실시간 데이터베이스 통신 에러 발생</span>
+</div>
+<p id="connection-error-message" class="text-slate-400 font-mono pl-6"></p>
+<button onclick="useOfflineFallbackData()" class="mt-1 self-end bg-rose-900/40 hover:bg-rose-900 border border-rose-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">
+가상 기출 데이터로 강제 시작하기
+</button>
+</div>
+<!-- Student ID & Name Entry Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+<div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학번 입력 (6자리)</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
+<i class="fa-solid fa-id-card"></i>
+</span>
+<input type="text" id="student-id-input" maxlength="6" placeholder="예: 301105"
+class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-extrabold tracking-widest text-lg focus:outline-none focus:border-[#5BC0BE] transition">
+</div>
+</div>
+<div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학생 실명 입력</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
+<i class="fa-solid fa-user"></i>
+</span>
+<input type="text" id="student-name-input" placeholder="예: 홍길동"
+class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-bold text-lg focus:outline-none focus:border-[#5BC0BE] transition">
+</div>
+</div>
+</div>
+<!-- Grade Level Class Selection Tab -->
+<div class="mb-6 bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/40">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-2">응시 자격 (급수) 선택</label>
+<div class="grid grid-cols-2 gap-3">
+<button id="btn-class-3" onclick="selectLicenseClass('3급')"
+class="py-3 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200">
+3급 기관사 자격
+</button>
+<button id="btn-class-4" onclick="selectLicenseClass('4급')"
+class="py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200">
+4급 기관사 자격
+</button>
+</div>
+</div>
+<!-- SELF-DIAGNOSIS CARD -->
+<div id="self-diagnosis-card" class="hidden mb-6 bg-indigo-950/40 border border-indigo-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn">
+<div class="flex items-center gap-2 text-indigo-400">
+<i class="fa-solid fa-square-poll-vertical text-lg"></i>
+<span class="font-bold text-sm"> <span id="diag-student-id" class="text-white"></span> 학생 실시간 자가진단 리포트</span>
+</div>
+<div class="text-slate-300 leading-relaxed font-semibold">
+• 정복해야 할 오답 문항: <span id="diag-wrong-status" class="text-rose-400 font-extrabold">0개 남음</span>
+</div>
+<p id="diag-message" class="text-slate-400 italic font-medium"></p>
+</div>
+<!-- INTERACTIVE RESUME SESSION PROMPT CARD -->
+<div id="resume-prompt-card" class="hidden mb-6 bg-emerald-950/40 border border-emerald-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn">
+<div class="flex items-center gap-2 text-emerald-400">
+<i class="fa-solid fa-clock-rotate-left text-lg"></i>
+<span class="font-bold text-sm">중단된 학습 기록 감지!</span>
+</div>
+<p class="text-slate-300 leading-relaxed">
+<span id="resume-student-id" class="hidden"></span>이전에 학습하던 <span id="resume-session-info" class="text-white font-bold text-xs"></span> 데이터가 존재합니다. 이어서 풀어나가시겠습니까?
+</p>
+<div class="flex gap-2.5 mt-1">
+<button onclick="resumeSession()" class="flex-1 bg-gradient-to-r from-[#5BC0BE] to-teal-600 hover:from-[#5BC0BE] hover:to-[#5BC0BE] text-slate-950 font-black py-2.5 rounded-xl text-xs transition duration-200 shadow-md">
+⚓ 이어서 학습하기
+</button>
+<button onclick="clearAndStartFresh()" class="bg-[#3A506B]/30 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-[#3A506B]/40 hover:border-rose-500/40 px-4 py-2.5 rounded-xl text-xs transition duration-200">
+↺ 아니오
+</button>
+</div>
+</div>
+<!-- Track Selection Section -->
+<div class="space-y-4">
+<label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">학습 트랙 선택</label>
+<div class="grid grid-cols-3 gap-4">
+<!-- Track A -->
+<div id="btn-track-a" onclick="selectTrack('A')" class="bg-[#1C2541] border-2 border-[#3A506B]/50 hover:border-[#5BC0BE]/60 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full">
+<div class="bg-[#5BC0BE]/10 text-[#5BC0BE] p-3 rounded-xl border border-[#5BC0BE]/20 mb-2">
+<i class="fa-solid fa-graduation-cap text-xl"></i>
+</div>
+<div>
+<h4 class="text-xs lg:text-sm font-bold text-white">모의고사</h4>
+</div>
+</div>
+<!-- Track B -->
+<div id="btn-track-b" onclick="selectTrack('B')" class="bg-[#1C2541] border-2 border-[#3A506B]/50 hover:border-emerald-500/60 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full">
+<div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-xl border border-emerald-500/20 mb-2">
+<i class="fa-solid fa-book-open-reader text-xl"></i>
+</div>
+<div>
+<h4 class="text-xs lg:text-sm font-bold text-white">과목선택</h4>
+</div>
+</div>
+<!-- Track C -->
+<div id="btn-track-c" onclick="selectTrack('C')" class="bg-[#1C2541] border-2 border-[#3A506B]/50 hover:border-rose-500/60 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full opacity-40 pointer-events-none">
+<div class="bg-rose-500/10 text-rose-400 p-3 rounded-xl border border-rose-500/20 mb-2">
+<i class="fa-solid fa-fire-alt text-xl"></i>
+</div>
+<div>
+<h4 class="text-xs lg:text-sm font-bold text-white">오답소탕</h4>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters Container -->
+<div id="filters-container" class="hidden mt-8 border-t border-[#3A506B]/40 pt-6 space-y-6 animate-fadeIn">
+<div class="flex items-center space-x-2">
+<span id="active-track-badge" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400"></span>
+<span class="text-xs text-slate-400 font-medium">세부 학습 필터를 선택해 주세요.</span>
+</div>
+<!-- Track A Options -->
+<div id="track-a-options" class="hidden space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-2">년도 선택</label>
+<select id="year-select-a" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#5BC0BE] transition">
+<option value="2026" selected>2026년</option>
+<option value="2025">2025년</option>
+<option value="2024">2024년</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-2">시험 회차</label>
+<select id="round-select-a" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#5BC0BE] transition">
+<option value="제1회 정기시험" selected>제1회 정기시험</option>
+<option value="제2회 정기시험">제2회 정기시험</option>
+<option value="제3회 정기시험">제3회 정기시험</option>
+<option value="제4회 정기시험">제4회 정기시험</option>
+</select>
+</div>
+</div>
+<!-- Subject Selection -->
+<div class="bg-[#0B132B]/60 p-4 rounded-2xl border border-[#3A506B]/30 space-y-2">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider">과목 선택 (중복 체크 가능 / 부분합격 대비)</label>
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="기관1" checked class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>기관1</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="기관2" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>기관2</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="기관3" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>기관3</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="직무일반" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>직무일반</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="영어" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>영어</span>
+</label>
+</div>
+<p class="text-[10px] text-slate-500 leading-normal mt-1">* 2개 과목 이상 체크 시, 과목별 25문제가 누적되어 시험이 동적 병합 출제됩니다.</p>
+</div>
+</div>
+<!-- Track B Options -->
+<div id="track-b-options" class="hidden space-y-4">
+<label class="block text-xs font-bold text-slate-400 mb-2">과목 선택</label>
+<div class="grid grid-cols-5 gap-2.5">
+<button onclick="selectSubjectB('기관1')" id="btn-sub-기관1" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">기관1</button>
+<button onclick="selectSubjectB('기관2')" id="btn-sub-기관2" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">기관2</button>
+<button onclick="selectSubjectB('기관3')" id="btn-sub-기관3" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">기관3</button>
+<button onclick="selectSubjectB('직무일반')" id="btn-sub-직무일반" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">직무일반</button>
+<button onclick="selectSubjectB('영어')" id="btn-sub-영어" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">영어</button>
+</div>
+<div id="track-b-dropdowns" class="hidden grid grid-cols-2 gap-4 mt-4 p-4 bg-[#0B132B]/50 rounded-2xl border border-[#3A506B]/30 animate-fadeIn">
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-1.5">년도</label>
+<select id="year-select-b" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+<option value="2026" selected>2026년</option>
+<option value="2025">2025년</option>
+<option value="2024">2024년</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-1.5">시험 회차</label>
+<select id="round-select-b" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+<option value="제1회 정기시험" selected>제1회 정기시험</option>
+<option value="제2회 정기시험">제2회 정기시험</option>
+<option value="제3회 정기시험">제3회 정기시험</option>
+<option value="제4회 정기시험">제4회 정기시험</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Start Exam Button -->
+<button id="start-exam-btn" onclick="startSelectedExam()"
+class="w-full bg-gradient-to-r from-[#5BC0BE] to-[#3A506B] hover:from-[#5BC0BE] hover:to-[#5BC0BE] text-white py-4 rounded-xl font-bold tracking-widest text-sm shadow-lg shadow-[#5BC0BE]/10 hover:shadow-[#5BC0BE]/20 transform active:scale-[0.98] transition flex items-center justify-center gap-2">
+<i class="fa-solid fa-circle-play text-base"></i> 기출문제 로드 및 시험 시작 ⚓
+</button>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- SYSTEM WORKSPACE (Wide 2-Column Split View) -->
+<!-- ========================================== -->
+<div id="system-workspace" class="hidden grid grid-cols-12 gap-6 animate-fadeIn">
+<!-- Left Panel: Questions and Choices (Col-span 8 or 12 depending on layout mode V61) -->
+<section id="workspace-left-panel" class="col-span-12 lg:col-span-8 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto">
+<div>
+<!-- Header Badges inside quiz -->
+<div class="flex justify-between items-center border-b border-[#3A506B]/40 pb-4 mb-5">
+<div class="flex items-center space-x-2">
+<span id="current-track-tag" class="hidden"></span>
+<span id="subject-title" class="font-bold text-sm text-[#5BC0BE]"></span>
+</div>
+<div class="flex items-center space-x-3">
+<div class="bg-[#0B132B] px-3.5 py-1.5 rounded-full border border-[#3A506B]/60 text-xs font-extrabold text-slate-300">
+문제 <span id="current-num-badge" class="text-[#5BC0BE]">1</span> / <span id="total-num-badge">25</span>
+</div>
+</div>
+</div>
+<!-- Image Section -->
+<div id="image-container" class="hidden mb-6 bg-[#0B132B]/60 p-4 rounded-2xl border border-[#3A506B]/30 flex flex-col items-center">
+<img id="question-image" src="" alt="문제 이미지" class="max-h-72 object-contain rounded-xl shadow-md border border-[#3A506B]/20">
+</div>
+<!-- Question Text Section -->
+<div class="bg-[#0B132B]/50 p-5 rounded-2xl border border-[#3A506B]/30 mb-6 relative">
+<div id="question-text" class="text-white text-base md:text-lg font-bold leading-relaxed">문제를 불러오는 중입니다...</div>
+</div>
+<!-- Answer Options Section -->
+<div class="space-y-3.5 mb-6">
+<button onclick="markAnswer('ga')" id="opt-ga" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉮</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-ga" class="text-sm font-semibold"></span>
+<div id="img-container-ga" class="hidden">
+<img id="img-ga" src="" alt="보기 ㉮ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+<button onclick="markAnswer('na')" id="opt-na" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉯</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-na" class="text-sm font-semibold"></span>
+<div id="img-container-na" class="hidden">
+<img id="img-na" src="" alt="보기 ㉯ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+<button onclick="markAnswer('sa')" id="opt-sa" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉴</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-sa" class="text-sm font-semibold"></span>
+<div id="img-container-sa" class="hidden">
+<img id="img-sa" src="" alt="보기 ㉴ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+<button onclick="markAnswer('aa')" id="opt-aa" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉵</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-aa" class="text-sm font-semibold"></span>
+<div id="img-container-aa" class="hidden">
+<img id="img-aa" src="" alt="보기 ㉵ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+</div>
+</div>
+<!-- Footer Navigation Buttons -->
+<div class="flex items-center justify-between border-t border-[#3A506B]/40 pt-4 gap-4 mt-6">
+<div class="flex items-center space-x-3">
+<button onclick="prevQuestion()" id="btn-prev" class="bg-[#3A506B]/40 hover:bg-[#3A506B] text-slate-300 hover:text-white px-5 py-3 rounded-xl border border-[#3A506B] text-xs font-bold transition flex items-center gap-2">
+<i class="fa-solid fa-arrow-left"></i> 이전 문제
+</button>
+<button onclick="nextQuestion()" id="btn-next" class="bg-[#5BC0BE] hover:bg-[#5BC0BE]/80 text-slate-900 px-6 py-3 rounded-xl text-xs font-black tracking-wider transition flex items-center gap-2">
+다음 문제 <i class="fa-solid fa-arrow-right"></i>
+</button>
+</div>
+<div class="flex items-center space-x-3">
+<button onclick="checkTrackBAnswer()" id="btn-grade-b" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black tracking-widest transition">
+정답확인
+</button>
+<button onclick="submitTrackAExam()" id="btn-submit-a" class="hidden bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-3 rounded-xl text-xs font-black tracking-widest transition shadow-lg shadow-indigo-500/10 flex items-center gap-2">
+<i class="fa-solid fa-paper-plane"></i> 최종 시험 제출 ⚓
+</button>
+</div>
+</div>
+</section>
+<!-- Right Panel: Explanations and Final Score (Col-span 4 or Hidden based on V61 Layout engine) -->
+<section id="workspace-right-panel" class="col-span-12 lg:col-span-4 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto">
+<div>
+<h3 id="ai-explanation-header-title" class="text-sm font-extrabold text-slate-300 border-b border-[#3A506B]/40 pb-3 mb-4 flex items-center gap-2">
+<i class="fa-solid fa-graduation-cap text-[#5BC0BE]"></i> AI 실시간 스마트 해설서
+</h3>
+<!-- Return Button Container (Visible only in Track A Warp mode) -->
+<div id="warp-return-container" class="hidden mb-4">
+<button onclick="returnToSummaryList()" class="w-full bg-[#3A506B] hover:bg-[#5BC0BE] hover:text-slate-950 text-slate-200 py-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-md">
+<i class="fa-solid fa-rotate-left"></i> 📋 오답 진단 리스트로 복귀
+</button>
+</div>
+<!-- CLINIC Mode Return Button Container -->
+<div id="clinic-return-container" class="hidden mb-4">
+<button onclick="returnToTeacherDashboardFromClinic()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-md">
+<i class="fa-solid fa-rotate-left"></i> 📋 교사 대시보드로 돌아가기
+</button>
+</div>
+<!-- View 1: Track A Exam Ongoing Placeholder -->
+<div id="tutor-placeholder-a" class="py-12 px-6 text-center bg-[#0B132B]/60 border border-[#3A506B]/30 rounded-2xl flex flex-col items-center justify-center space-y-4 animate-pulse">
+<div class="w-14 h-14 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 text-2xl">
+<i class="fa-solid fa-anchor"></i>
+</div>
+<h4 class="text-xs font-extrabold text-slate-300">실전 모의고사 모드 작동 중</h4>
+<p class="text-[11px] text-slate-500 leading-relaxed max-w-xs">보기를 클릭해도 해설서가 나타나지 않습니다. 전체 문항을 진중하게 풀이하고 마지막에 [최종 시험 제출]을 완료하면, 자동 채점과 함께 오답 항목별 정밀 해설서가 한꺼번에 소환됩니다.</p>
+</div>
+<!-- View 1.5: Track B Not Graded Placeholder (V61 추가 반영) -->
+<div id="tutor-placeholder-b" class="hidden py-12 px-6 text-center bg-[#0B132B]/60 border border-[#3A506B]/30 rounded-2xl flex flex-col items-center justify-center space-y-4 animate-fadeIn">
+<div class="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 text-2xl">
+<i class="fa-solid fa-circle-question animate-pulse"></i>
+</div>
+<h4 class="text-xs font-extrabold text-slate-300">과목별 자율학습 진행 중</h4>
+<p class="text-[11px] text-slate-500 leading-relaxed max-w-xs">보기를 체크하고 하단의 <span class="text-emerald-400 font-bold">[정답확인]</span> 버튼을 누르시면 해당 기출문항의 맞춤형 오답 클리닉과 실시간 3단계 해설서가 즉시 활성화됩니다! ⚓</p>
+</div>
+<!-- View 2: Active Explanations (DB / AI Generation Block) -->
+<div id="active-explanation-block" class="hidden space-y-4">
+<!-- Grade Badge Card -->
+<div id="grade-badge-card" class="p-4 rounded-xl flex items-center space-x-3">
+<!-- JS Inject Badge design -->
+</div>
+<!-- 1. 핵심 용어 블록 -->
+<div class="bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/50 space-y-2 shadow-inner">
+<div class="flex items-center space-x-2 text-[#5BC0BE] text-xs font-bold">
+<i class="fa-solid fa-tags"></i>
+<span>핵심 용어</span>
+</div>
+<div id="premium-tag" class="text-sm text-white font-extrabold leading-relaxed"></div>
+</div>
+<!-- 2. 쉬운 개념 정의 블록 -->
+<div id="dynamic-middle-block" class="bg-[#0B132B]/80 p-5 rounded-2xl border border-[#3A506B]/40 space-y-2">
+<div class="flex items-center space-x-2 text-teal-400 text-xs font-bold">
+<i class="fa-solid fa-book-open" id="dynamic-middle-icon"></i>
+<span id="dynamic-middle-title">쉬운 개념 정의</span>
+</div>
+<div id="premium-concept" class="text-sm text-slate-300 font-semibold leading-relaxed"></div>
+</div>
+<!-- 3. 정답 및 보기 원리 분석 블록 -->
+<div class="bg-[#0B132B]/60 p-5 rounded-2xl border border-[#3A506B]/30 space-y-2">
+<div class="flex items-center space-x-2 text-indigo-400 text-xs font-bold">
+<i class="fa-solid fa-lightbulb"></i>
+<span>정답 및 보기 원리 분석</span>
+</div>
+<div id="premium-explanation" class="text-sm text-slate-300 font-semibold leading-relaxed space-y-2 whitespace-pre-line text-xs"></div>
+</div>
+<!-- Real-time Gemini Assist Block -->
+<div id="gemini-live-assist" class="hidden bg-indigo-950/20 border border-indigo-500/20 p-4 rounded-2xl space-y-2">
+<span class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">AI Live Tutor</span>
+<p id="gemini-ai-message" class="text-sm text-slate-300 leading-relaxed"></p>
+</div>
+</div>
+<!-- View 3: Track A Grading & Interactive Wrong Answers Summary -->
+<div id="exam-summary-block" class="hidden space-y-4">
+<div class="bg-gradient-to-tr from-indigo-900/30 to-slate-900/40 border border-indigo-500/30 py-3 px-4 rounded-2xl text-center space-y-1">
+<h4 class="text-xs font-extrabold text-[#5BC0BE]">실전 모의고사 채점 결과</h4>
+<div class="text-2xl font-black text-white">
+<span id="summary-score" class="text-rose-400">0</span> / 100점
+</div>
+<p class="text-[11px] text-slate-400 leading-relaxed"><span class="text-amber-400 font-bold">오답 항목을 클릭하시면 해당 문제를 복습하실 수 있습니다.</span></p>
+</div>
+<div class="space-y-2.5">
+<div class="text-xs font-bold text-slate-400 flex items-center justify-between">
+<span>오답 진단 리스트</span>
+<span id="wrong-count" class="text-rose-400"></span>
+</div>
+<div id="wrong-warp-list" class="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+<!-- JS inserts interactive anchor buttons here -->
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Teacher Auth / Dashboard Password Modal -->
+<div id="teacher-auth-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+<div class="bg-[#1C2541] rounded-3xl border border-[#3A506B] p-6 max-w-sm w-full shadow-2xl relative">
+<button onclick="closeTeacherAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+<i class="fa-solid fa-xmark text-lg"></i>
+</button>
+<div class="text-center mb-5">
+<div class="w-12 h-12 rounded-full bg-[#5BC0BE]/10 text-[#5BC0BE] mx-auto flex items-center justify-center border border-[#5BC0BE]/20 text-xl mb-3">
+<i class="fa-solid fa-shield-halved"></i>
+</div>
+<h3 class="text-base font-bold text-white">교사용 대시보드 접근</h3>
+<p class="text-xs text-slate-400 mt-1">대시보드 암호를 입력해 주세요.</p>
+</div>
+<div class="space-y-4">
+<input type="password" id="teacher-pw-input" placeholder="비밀번호"
+class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl py-3 px-4 text-center text-white placeholder-slate-500 font-bold focus:outline-none focus:border-[#5BC0BE] transition">
+<button onclick="verifyTeacherPassword()" class="w-full bg-[#5BC0BE] text-slate-900 py-3 rounded-xl text-xs font-extrabold tracking-widest transition">
+본인 인증 및 대시보드 로드
+</button>
+</div>
+</div>
+</div>
+<!-- Teacher Dashboard Modal -->
+<div id="teacher-dashboard-modal" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-6 animate-fadeIn">
+<div class="bg-[#1C2541] rounded-3xl border border-[#3A506B] w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
+<button onclick="closeTeacherDashboard()" class="absolute top-6 right-6 text-slate-400 hover:text-white transition">
+<i class="fa-solid fa-xmark text-xl"></i>
+</button>
+<div class="flex items-center space-x-3 border-b border-[#3A506B]/50 pb-4 mb-4">
+<div class="bg-indigo-500/10 text-indigo-400 p-2 rounded-xl border border-indigo-500/20">
+<i class="fa-solid fa-chalkboard-user text-xl"></i>
+</div>
+<div>
+<h2 class="text-lg font-extrabold text-white">우리 반 실시간 오답 분석기</h2>
+<p class="text-xs text-slate-400">교실 내 성취도 분석 및 취약 요소를 정밀 시각화합니다.</p>
+</div>
+</div>
+<!-- LMS Info Banner -->
+<div class="mb-4 bg-indigo-950/50 border border-indigo-500/30 text-indigo-200 px-4 py-3 rounded-xl text-xs flex items-start gap-2.5">
+<i class="fa-solid fa-circle-info text-indigo-400 text-base mt-0.5"></i>
+<p class="leading-relaxed">
+본 대시보드는 <strong>TRACK A (실전 모의고사)</strong>를 완료하고 최종 제출한 학생들의 성적 자료만 기록되어 분석에 반영됩니다. (TRACK B 과목 자율학습 결과는 연습 모드이므로 기록되지 않습니다.)
+</p>
+</div>
+<!-- 3급 보기 / 4급 보기 필터링 탭 (LMS Dashboard 전용) -->
+<div class="flex gap-3 mb-6 bg-[#0B132B] p-3 rounded-2xl border border-[#3A506B]/30">
+<button id="btn-dash-class-3" onclick="changeDashboardClassFilter('3급')"
+class="flex-1 py-2.5 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200">
+3급 학습단 보기
+</button>
+<button id="btn-dash-class-4" onclick="changeDashboardClassFilter('4급')"
+class="flex-1 py-2.5 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200">
+4급 학습단 보기
+</button>
+</div>
+<!-- Stats grid Cards (KPI Cards) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+<!-- KPI 1: Active Student Count -->
+<div class="bg-[#0B132B]/60 p-4 rounded-2xl border border-[#3A506B]/30 shadow-md">
+<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">실시간 수업 참여</p>
+<h4 id="stat-selected-students" class="text-2xl font-black text-[#5BC0BE] mt-1">0명 / 0명</h4>
+</div>
+<!-- KPI 2: At Risk Count (Score < 50) + Integrated Mini Refresh Button -->
+<div class="bg-[#0B132B]/60 p-4 rounded-2xl border border-[#3A506B]/30 flex justify-between items-center shadow-md">
+<div>
+<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">집중 피드백 대상 (50점 미만)</p>
+<h4 id="stat-at-risk-students" class="text-2xl font-black text-rose-400 mt-1">0명</h4>
+</div>
+<!-- Integrated Small Refresh Button -->
+<button onclick="fetchLMSData()" class="p-2.5 bg-[#1C2541] hover:bg-[#3A506B] border border-[#3A506B] hover:border-slate-400 rounded-lg text-[#5BC0BE] transition" title="데이터 새로고침">
+<i class="fa-solid fa-rotate text-sm animate-pulse"></i>
+</button>
+</div>
+</div>
+<!-- 2-Column Dashboard analytics -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: Student List & Individual Wrong Diagnosis -->
+<div class="lg:col-span-6 space-y-4">
+<div class="bg-[#0B132B]/50 p-4 rounded-2xl border border-[#3A506B]/40 flex flex-col justify-between h-64 shadow-lg">
+<div class="flex items-center justify-between border-b border-[#3A506B]/30 pb-2 mb-2">
+<h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+<i class="fa-solid fa-users text-[#5BC0BE]"></i> 참여 학생 명부 및 성취도
+</h4>
+<span id="dash-status-indicator" class="text-[10px] text-slate-400 font-bold"></span>
+</div>
+<!-- Scrollable Student List Table -->
+<div class="flex-1 overflow-y-auto pr-1">
+<div class="grid grid-cols-12 gap-1 px-3 py-1.5 bg-[#1C2541]/80 border-b border-[#3A506B]/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider sticky top-0 z-10">
+<div class="col-span-2 text-center">
+<input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllDashboardStudents(this)" class="w-3.5 h-3.5 accent-[#5BC0BE] rounded cursor-pointer" checked>
+</div>
+<div class="col-span-4 pl-2">학번 (이름)</div>
+<div class="col-span-3 text-center">제출상태</div>
+<div class="col-span-3 text-right pr-2">점수</div>
+</div>
+<div id="dash-student-list-container" class="divide-y divide-[#3A506B]/10">
+<!-- Student rows injected dynamically -->
+</div>
+</div>
+</div>
+<!-- Student Detail Panel -->
+<div id="student-detail-panel" class="bg-[#0B132B]/50 p-4 rounded-2xl border border-[#3A506B]/40 min-h-[160px] shadow-lg">
+<!-- Dynamic Student Analysis Block -->
+</div>
+</div>
+<!-- Right Column: Killer Questions & Concept Tags -->
+<div class="lg:col-span-6 space-y-4">
+<div class="bg-[#0B132B]/50 p-5 rounded-2xl border border-[#3A506B]/40 h-64 flex flex-col justify-between shadow-lg">
+<div class="flex items-center justify-between border-b border-[#3A506B]/30 pb-2 mb-2">
+<h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+<i class="fa-solid fa-chart-bar text-rose-500"></i> 학급 킬러문항 TOP 3 (공동 순위 지원)
+</h4>
+<!-- Dropdown filter -->
+<div class="flex items-center space-x-2">
+<span class="text-[10px] text-slate-500">과목:</span>
+<select onchange="changeDashboardSubjectFilter(this.value)" class="bg-[#1C2541] border border-[#3A506B] rounded-lg px-2 py-1 text-[10px] text-white focus:outline-none">
+<option value="기관1" selected>기관1</option>
+<option value="기관2">기관2</option>
+<option value="기관3">기관3</option>
+<option value="직무일반">직무일반</option>
+<option value="영어">영어</option>
+</select>
+</div>
+</div>
+<!-- Killer Questions chart list -->
+<div id="killer-questions-bar-container" class="flex-1 overflow-y-auto space-y-3 pr-1">
+<!-- Killer bars dynamically injected -->
+</div>
+</div>
+<!-- Expanded Class-wide Concept Hashtag Board -->
+<div class="bg-[#0B132B]/50 p-5 rounded-2xl border border-[#3A506B]/40 min-h-[160px] flex flex-col justify-between shadow-lg">
+<div>
+<h4 class="text-xs font-bold text-slate-300 mb-2.5 flex items-center gap-1.5">
+<i class="fa-solid fa-tags text-amber-400"></i> 오늘 수업 집중 피드백 전공 핵심 개념 (수업 판서 족보)
+</h4>
+<p class="text-[9px] text-slate-500 leading-normal mb-3">* 학급 학생들이 가장 오개념을 보인 상위 취약 이론 키워드입니다. 판서 지도를 병행하세요.</p>
+<!-- Dynamic Hashtag Cloud -->
+<div id="dash-class-concept-tags" class="flex flex-wrap gap-2 max-h-[85px] overflow-y-auto pr-1">
+<!-- Tags injected dynamically -->
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Copyright -->
+<footer class="bg-[#1C2541]/40 border-t border-[#3A506B]/30 px-6 py-4 mt-8">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-2">
+<p></p>
+<p>본 시스템은 부산해사고 48기 학습자료로만 활용되니 무단배포를 금지합니다.</p>
+</div>
+</footer>
+<!-- ======================================================== -->
+<!-- HTML 정적 템플릿 정의 구역 (Safe Customizing Area) -->
+<!-- ======================================================== -->
+<div id="template-registry-container" class="hidden" aria-hidden="true">
+<!-- Student Row in Dashboard -->
+<template id="tpl-student-row">
+<div class="student-row grid grid-cols-12 gap-1 px-3 py-2 border-b border-[#3A506B]/20 items-center text-xs transition cursor-pointer">
+<div class="col-span-2 text-center">
+<input type="checkbox" class="student-checkbox w-3.5 h-3.5 accent-[#5BC0BE] rounded cursor-pointer">
+</div>
+<div class="student-name col-span-4 pl-2 font-bold text-slate-200"></div>
+<div class="student-status col-span-3 text-center"></div>
+<div class="student-score col-span-3 text-right pr-2 font-extrabold text-slate-100"></div>
+</div>
+</template>
+<!-- Subject Pill Button for Student Details -->
+<template id="tpl-subject-pill">
+<button class="subject-pill-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition"></button>
+</template>
+<!-- Wrong Question Badge for Student Details -->
+<template id="tpl-wrong-badge">
+<button class="wrong-badge-btn px-2 py-1 bg-[#0B132B]/80 hover:bg-[#1C2541] border border-rose-500/30 hover:border-rose-400 text-rose-300 rounded-lg text-[11px] font-extrabold flex items-center justify-between transition">
+<span class="q-num-text"></span>
+<span class="q-subject-text text-[9px] text-slate-500 font-normal ml-1"></span>
+</button>
+</template>
+<!-- Killer Question Progress Bar in Dashboard -->
+<template id="tpl-killer-bar">
+<div class="killer-bar-item space-y-1">
+<div class="flex items-center justify-between text-xs">
+<div class="flex items-center space-x-2">
+<span class="rank-badge px-1.5 py-0.5 rounded text-[9px]"></span>
+<span class="q-label font-bold text-slate-200"></span>
+<span class="concept-label text-[10px] text-[#5BC0BE] font-semibold"></span>
+</div>
+<span class="count-label text-[11px] text-slate-300 font-extrabold"></span>
+</div>
+<div class="w-full bg-[#0B132B] h-2.5 rounded-full overflow-hidden border border-[#3A506B]/20 flex">
+<div class="progress-fill h-full rounded-full transition-all duration-500 bg-gradient-to-r from-rose-500 to-amber-500"></div>
+</div>
+</div>
+</template>
+<!-- Dynamic Concept Hashtag Card -->
+<template id="tpl-concept-card">
+<span class="concept-card-item px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-lg text-[11px] font-bold shadow-sm flex items-center gap-1.5 animate-fadeIn">
+<i class="fa-solid fa-hashtag text-amber-500 text-[10px]"></i>
+<span class="tag-text"></span>
+</span>
+</template>
+<!-- Correct Grade Badge Card -->
+<template id="tpl-badge-correct">
+<div class="flex items-center space-x-3 w-full">
+<div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 text-lg">
+<i class="fa-solid fa-circle-check"></i>
+</div>
+<div>
+<h4 class="correct-title-label text-xs font-black text-emerald-400">정답입니다! 완벽한 해상공학적 판단입니다.</h4>
+<p class="correct-subtitle-label text-[10px] text-slate-400 mt-0.5"></p>
+</div>
+</div>
+</template>
+<!-- Incorrect Grade Badge Card -->
+<template id="tpl-badge-incorrect">
+<div class="flex items-center space-x-3 w-full">
+<div class="w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30 text-lg">
+<i class="fa-solid fa-circle-xmark"></i>
+</div>
+<div>
+<h4 class="incorrect-title-label text-xs font-black text-rose-400">오답입니다. 전공 오개념을 보완하세요!</h4>
+<p class="incorrect-subtitle-label text-[10px] text-slate-400 mt-0.5"></p>
+</div>
+</div>
+</template>
+</div>
+<!-- JAVASCRIPT SYSTEM ENGINE (SUPABASE & LOGIC)-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Supabase 연동 정보
+const SUPABASE_URL = "https://fvpfkgzbztjpfuszybnf.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_N3sqO1oTUzCkB_iZof52Xw_H7ScMZ66";
+// System Global State Variables
+let questionsList = [];
+let currentNo = 1;
+let markedAnswers = {};
+let currentTrack = "";
+let selectedSubject = "";          // Track B active subject
+let selectedSubjects = [];         // Track A multi-subject checklist
+let selectedYear = "2026";         // V64: Default year set to 2026
+let selectedRound = "제1회 정기시험";
+let selectedClass = "3급";         // 응시 급수 기본 3급 설정
+let isOfflineMode = false;
+let isGradedMap = {};
+let wrongAttemptsMap = {};         // Track B retry-tracking wrong attempts
+let dbSubmissionsRaw = [];
+let checkedStudentsMap = {};
+let selectedDetailStudent = null;
+let activeDetailSubject = "기관1";
+let activeDashboardSubject = "기관1"; // 디폴트 기관1 활성화
+let activeDashboardClass = "3급";      // 대시보드 기본 3급 조회
+let activeDetailSession_2nd = "전체";
+document.addEventListener('DOMContentLoaded', () => {
+const savedStudentId = localStorage.getItem('smart_tutor_student_id');
+const savedStudentName = localStorage.getItem('smart_tutor_student_name');
+if (savedStudentId && savedStudentId.length === 6 && !isNaN(savedStudentId)) {
+document.getElementById('student-id-input').value = savedStudentId;
+}
+if (savedStudentName) {
+document.getElementById('student-name-input').value = savedStudentName;
+}
+document.getElementById('student-id-input').addEventListener('input', (e) => {
+const val = e.target.value.trim();
+if (val.length === 6 && !isNaN(val)) {
+localStorage.setItem('smart_tutor_student_id', val);
+checkResumeSession(val);
+updateSelfDiagnosis(val);
+}
+});
+document.getElementById('student-name-input').addEventListener('input', (e) => {
+const val = e.target.value.trim();
+localStorage.setItem('smart_tutor_student_name', val);
+});
+if (SUPABASE_URL.includes("your-project-id") || SUPABASE_ANON_KEY.includes("your-anon-key")) {
+document.getElementById('supabase-key-warning').classList.remove('hidden');
+isOfflineMode = true;
+}
+selectLicenseClass(selectedClass);
+});
+// 수식 윗선(Overline) 및 기호 자동 변환 포맷터 함수 (V63 KaTeX + Pretendard 폰트 정합 최적화판)
+function formatBarText(text) {
+if (!text) return "";
+let formatted = text;
+// 1. 한국어 기재 방식 처리: "EXPR (EXPR 위에 바 표시)" -> <span class="overline">EXPR</span>
+const parenRegex = /([^\(]*)\(([^)]+)\s*위에\s*바\s*표시\)/g;
+formatted = formatted.replace(parenRegex, function(match, pre, expr) {
+let target = expr.trim();
+let dotTarget = target.replace(/\*/g, '·');
+if (pre.includes(target)) {
+let escapedTarget = target.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+let targetRegex = new RegExp(escapedTarget, 'g');
+pre = pre.replace(targetRegex, '<span class="overline">' + dotTarget + '</span>');
+} else {
+pre = pre + '<span class="overline">' + dotTarget + '</span>';
+}
+return pre;
+});
+// 2. functional 표기방식 처리: bar(EXPR) -> <span class="overline">EXPR</span>
+formatted = formatted.replace(/bar\(([^)]+)\)/gi, function(match, expr) {
+let dotExpr = expr.replace(/\*/g, '·');
+return '<span class="overline">' + dotExpr + '</span>';
+});
+// 3. 접미사 표기방식 처리: EXPR bar (예: A bar -> <span class="overline">A</span>)
+formatted = formatted.replace(/\b([A-Za-z0-9•·+.*\-()]+)\s+bar\b/gi, function(match, expr) {
+let dotExpr = expr.replace(/\*/g, '·');
+return '<span class="overline">' + dotExpr + '</span>';
+});
+// 4. LaTeX 표기방식 처리: \overline{EXPR} 및 \bar{EXPR} -> <span class="overline">EXPR</span>
+// 이렇게 함으로써 KaTeX 전용 폰트가 아닌 기본 본문 폰트(Pretendard)를 그대로 유지하게 합니다.
+formatted = formatted.replace(/\\overline\{([^}]+)\}/g, '<span class="overline">$1</span>');
+formatted = formatted.replace(/\\bar\{([^}]+)\}/g, '<span class="overline">$1</span>');
+formatted = formatted.replace(/overline\{([^}]+)\}/g, '<span class="overline">$1</span>');
+formatted = formatted.replace(/bar\{([^}]+)\}/g, '<span class="overline">$1</span>');
+formatted = formatted.replace(/\\bar\s+([A-Za-z0-9])/g, '<span class="overline">$1</span>');
+// 5. LaTeX 수식 블록 기호 \( 및 \) 내부에서 과하게 감싸진 HTML 수식 기호 정리
+// 만약 \( ... \) 또는 \\[ ... \\] 내부에 <span class="overline"> 이 주입되었다면 해당 수식 기호를 해제하여
+// KaTeX가 태그를 수식으로 오인하지 않고, Pretendard 고유 폰트로 깔끔하게 표시하게 합니다.
+formatted = formatted.replace(/\\\\\(([^)]*?<span[^>]*>.*?<\/span>.*?)\\\\\)/g, '$1');
+formatted = formatted.replace(/\\\(([^)]*?<span[^>]*>.*?<\/span>.*?)\\\)/g, '$1');
+// 6. LaTeX \cdot 이나 \\cdot 를 middle dot · 로 변환
+formatted = formatted.replace(/\\cdot/g, '·').replace(/\cdot/g, '·');
+return formatted;
+}
+// KaTeX 수식 실시간 동적 렌더링 장치 함수 (V62 핵심 기능)
+function renderMath(elementId) {
+const el = document.getElementById(elementId);
+if (!el) return;
+if (typeof renderMathInElement === 'function') {
+try {
+renderMathInElement(el, {
+delimiters: [
+{left: '$$', right: '$$', display: true},
+{left: '$', right: '$', display: false},
+{left: '\\(', right: '\\)', display: false},
+{left: '\\[', right: '\\]', display: true}
+],
+throwOnError: false
+});
+} catch (e) {
+console.error("KaTeX 렌더링 실패 [" + elementId + "]: ", e);
+}
+}
+}
+function selectLicenseClass(licClass) {
+selectedClass = licClass;
+const btn3 = document.getElementById('btn-class-3');
+const btn4 = document.getElementById('btn-class-4');
+if (licClass === '3급') {
+btn3.className = "py-3 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200";
+btn4.className = "py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200";
+} else {
+btn4.className = "py-3 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200";
+btn3.className = "py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200";
+}
+saveSessionState();
+}
+function getWrongPool(studentId) {
+if (!studentId || studentId.length !== 6 || isNaN(studentId)) return [];
+const data = localStorage.getItem('smart_tutor_wrong_pool_' + studentId);
+return data ? JSON.parse(data) : [];
+}
+function saveWrongPool(studentId, pool) {
+if (!studentId || studentId.length !== 6 || isNaN(studentId)) return;
+localStorage.setItem('smart_tutor_wrong_pool_' + studentId, JSON.stringify(pool));
+}
+function updateSelfDiagnosis(studentId) {
+const diagCard = document.getElementById('self-diagnosis-card');
+const trackCBtn = document.getElementById('btn-track-c');
+if (!studentId || studentId.length !== 6 || isNaN(studentId)) {
+diagCard.classList.add('hidden');
+if (trackCBtn) trackCBtn.classList.add('opacity-40', 'pointer-events-none');
+return;
+}
+diagCard.classList.remove('hidden');
+document.getElementById('diag-student-id').innerText = studentId;
+const pool = getWrongPool(studentId);
+const count = pool.length;
+if (count > 0) {
+diagCard.className = "mb-6 bg-indigo-950/40 border border-indigo-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn";
+document.getElementById('diag-wrong-status').innerHTML = '<span class="text-rose-400 font-extrabold">' + count + '개 남음</span>';
+document.getElementById('diag-message').innerText = '"현재 격파를 기다리는 오답이 [ ' + count + ' ] 남았습니다! 하나씩 깨트려봐요!"';
+if (trackCBtn) trackCBtn.classList.remove('opacity-40', 'pointer-events-none');
+} else {
+diagCard.className = "mb-6 bg-emerald-950/40 border border-emerald-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn";
+document.getElementById('diag-wrong-status').innerHTML = '<span class="text-emerald-400 font-extrabold">0개 남음</span>';
+document.getElementById('diag-message').innerText = '"완벽해요! 밀린 오답이 0개입니다. 100% 정복 완료!"';
+if (trackCBtn) trackCBtn.classList.add('opacity-40', 'pointer-events-none');
+}
+}
+function checkResumeSession(studentId) {
+const promptCard = document.getElementById('resume-prompt-card');
+if (!studentId || studentId.length !== 6 || isNaN(studentId)) {
+promptCard.classList.add('hidden');
+return;
+}
+const sessionData = localStorage.getItem('smart_tutor_resume_session_' + studentId);
+if (sessionData) {
+try {
+const state = JSON.parse(sessionData);
+if (state.currentTrack === 'CLINIC') {
+localStorage.removeItem('smart_tutor_resume_session_' + studentId);
+promptCard.classList.add('hidden');
+return;
+}
+if (Date.now() - state.timestamp > 48 * 60 * 60 * 1000) {
+localStorage.removeItem('smart_tutor_resume_session_' + studentId);
+promptCard.classList.add('hidden');
+return;
+}
+const trackText = state.currentTrack === 'A' ? '모의고사' : (state.currentTrack === 'B' ? '과목 학습' : '오답 소탕');
+const subjText = state.selectedSubject || (state.selectedSubjects && state.selectedSubjects.join(', ')) || '미지정';
+const progressText = state.currentTrack === 'C' ? '오답 소탕전 (Q' + state.currentNo + '번 풀 차례)' : (state.selectedClass || '3급') + ' ' + state.selectedYear + '년 ' + state.selectedRound + ' - ' + subjText + ' (Q' + state.currentNo + '번 풀 차례)';
+document.getElementById('resume-student-id').innerText = studentId;
+document.getElementById('resume-session-info').innerText = trackText + ' [' + progressText + ']';
+promptCard.classList.remove('hidden');
+} catch (e) {
+console.error("Session parse error: ", e);
+promptCard.classList.add('hidden');
+}
+} else {
+promptCard.classList.add('hidden');
+}
+}
+function saveSessionState() {
+if (currentTrack === 'CLINIC') return;
+const studentId = document.getElementById('student-id-input').value.trim();
+if (!studentId || studentId.length !== 6 || isNaN(studentId)) return;
+const state = {
+currentTrack: currentTrack,
+selectedSubject: selectedSubject,
+selectedSubjects: selectedSubjects,
+selectedYear: selectedYear,
+selectedRound: selectedRound,
+selectedClass: selectedClass,
+currentNo: currentNo,
+markedAnswers: markedAnswers,
+isGradedMap: isGradedMap,
+wrongAttemptsMap: wrongAttemptsMap,
+questionsList: questionsList,
+timestamp: Date.now()
+};
+localStorage.setItem('smart_tutor_resume_session_' + studentId, JSON.stringify(state));
+}
+function clearSessionState(studentId) {
+if (!studentId) {
+studentId = document.getElementById('student-id-input').value.trim();
+}
+if (studentId) {
+localStorage.removeItem('smart_tutor_resume_session_' + studentId);
+}
+}
+function resumeSession() {
+const studentId = document.getElementById('student-id-input').value.trim();
+const sessionData = localStorage.getItem('smart_tutor_resume_session_' + studentId);
+if (!sessionData) return;
+try {
+const state = JSON.parse(sessionData);
+if (state.currentTrack === 'CLINIC') {
+localStorage.removeItem('smart_tutor_resume_session_' + studentId);
+alert("해당 세션은 유효하지 않아 초기화되었습니다.");
+return;
+}
+currentTrack = state.currentTrack;
+selectedSubject = state.selectedSubject;
+selectedSubjects = state.selectedSubjects || [];
+selectedYear = state.selectedYear;
+selectedRound = state.selectedRound;
+selectedClass = state.selectedClass || "3급";
+currentNo = state.currentNo;
+markedAnswers = state.markedAnswers || {};
+isGradedMap = state.isGradedMap || {};
+wrongAttemptsMap = state.wrongAttemptsMap || {};
+questionsList = state.questionsList || [];
+localStorage.setItem('smart_tutor_student_id', studentId);
+document.getElementById('lobby-screen').classList.add('hidden');
+document.getElementById('system-workspace').classList.remove('hidden');
+document.getElementById('header-student-badge').classList.remove('hidden');
+const savedName = localStorage.getItem('smart_tutor_student_name') || "";
+document.getElementById('display-student-id').innerText = savedName ? studentId + ' (' + savedName + ')' : '학번: ' + studentId;
+selectTrack(currentTrack);
+selectLicenseClass(selectedClass);
+if (currentTrack === 'B' && selectedSubject) {
+selectSubjectB(selectedSubject);
+} else if (currentTrack === 'A' && selectedSubjects.length > 0) {
+document.querySelectorAll('input[name="subject-select-a-group"]').forEach(chk => {
+chk.checked = selectedSubjects.includes(chk.value);
+});
+}
+showQuestion();
+alert('⚓ ' + studentId + ' 학생님의 이전 학습 데이터를 성공적으로 복원했습니다. (Q' + currentNo + '번 문항)');
+} catch (e) {
+alert("임시 저장 세션 로드 중 에러가 발생했습니다.");
+console.error(e);
+}
+}
+function clearAndStartFresh() {
+const studentId = document.getElementById('student-id-input').value.trim();
+if (confirm("정말 이전에 풀던 임시 저장 데이터를 완전히 삭제하고 처음부터 새로 학습하시겠습니까?")) {
+clearSessionState(studentId);
+checkResumeSession(studentId);
+alert("임시 저장 기록이 성공적으로 삭제되었습니다. 원하시는 트랙을 선택해 주세요.");
+}
+}
+function selectTrack(track) {
+currentTrack = track;
+const cardA = document.getElementById('btn-track-a');
+const cardB = document.getElementById('btn-track-b');
+const cardC = document.getElementById('btn-track-c');
+const badge = document.getElementById('active-track-badge');
+const filters = document.getElementById('filters-container');
+const optA = document.getElementById('track-a-options');
+const optB = document.getElementById('track-b-options');
+filters.classList.remove('hidden');
+const baseCardClass = "bg-[#1C2541] border-2 border-[#3A506B]/50 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full";
+const defaultClassA = baseCardClass + " hover:border-[#5BC0BE]/60";
+const defaultClassB = baseCardClass + " hover:border-emerald-500/60";
+const defaultClassC = baseCardClass + " hover:border-rose-500/60";
+cardA.className = defaultClassA + " opacity-60 border-[#3A506B]/20";
+cardB.className = defaultClassB + " opacity-60 border-[#3A506B]/20";
+if (cardC) cardC.className = defaultClassC + " opacity-60 border-[#3A506B]/20";
+if (track === 'A') {
+cardA.className = defaultClassA + " border-[#5BC0BE] shadow-lg shadow-[#5BC0BE]/10";
+badge.innerText = "모의고사";
+badge.className = "px-3 py-1 text-xs font-bold rounded-lg bg-[#5BC0BE]/20 border border-[#5BC0BE]/30 text-[#5BC0BE]";
+optA.classList.remove('hidden');
+optB.classList.add('hidden');
+} else if (track === 'B') {
+cardB.className = defaultClassB + " border-emerald-500 shadow-lg shadow-emerald-500/10";
+badge.innerText = "과목 선택";
+badge.className = "px-3 py-1 text-xs font-bold rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400";
+optB.classList.remove('hidden');
+optA.classList.add('hidden');
+} else if (track === 'C') {
+const studentId = document.getElementById('student-id-input').value.trim();
+const pool = getWrongPool(studentId);
+if (pool.length === 0) {
+alert("격파할 오답이 없습니다. 모의고사나 과목별 학습을 먼저 진행해 주세요!");
+selectTrack('A');
+return;
+}
+if (cardC) {
+cardC.className = defaultClassC + " border-rose-500 shadow-lg shadow-rose-500/10";
+}
+badge.innerText = "오답 소탕";
+badge.className = "px-3 py-1 text-xs font-bold rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400";
+optA.classList.add('hidden');
+optB.classList.add('hidden');
+}
+}
+function selectSubjectB(subject) {
+selectedSubject = subject;
+document.querySelectorAll('.subject-card').forEach(btn => {
+btn.className = "subject-card bg-[#0B132B] border border-[#3A506B] p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200";
+});
+const activeBtn = document.getElementById('btn-sub-' + subject);
+if (activeBtn) {
+activeBtn.className = "subject-card bg-emerald-950/60 border-2 border-emerald-500 p-3 rounded-xl text-xs font-black text-emerald-300 shadow-md shadow-emerald-500/10 transition-all duration-200";
+}
+document.getElementById('track-b-dropdowns').classList.remove('hidden');
+}
+async function startSelectedExam() {
+const studentId = document.getElementById('student-id-input').value.trim();
+if (studentId.length !== 6 || isNaN(studentId)) {
+alert("학번 6자리 숫자를 올바르게 기입해 주세요!");
+return;
+}
+const studentName = document.getElementById('student-name-input').value.trim();
+if (!studentName) {
+alert("학생 이름을 정확하게 입력해 주세요!");
+return;
+}
+localStorage.setItem('smart_tutor_student_id', studentId);
+localStorage.setItem('smart_tutor_student_name', studentName);
+if (currentTrack === 'A') {
+selectedYear = document.getElementById('year-select-a').value;
+selectedRound = document.getElementById('round-select-a').value;
+selectedSubjects = [];
+document.querySelectorAll('input[name="subject-select-a-group"]:checked').forEach(chk => {
+selectedSubjects.push(chk.value);
+});
+if (selectedSubjects.length === 0) {
+alert("모의고사를 풀 과목을 한 개 이상 선택해 주세요!");
+return;
+}
+selectedSubject = selectedSubjects.join(', ');
+} else if (currentTrack === 'B') {
+if (!selectedSubject) {
+alert("공부하실 과목 카드를 먼저 한 개 선택해 주세요!");
+return;
+}
+selectedYear = document.getElementById('year-select-b').value;
+selectedRound = document.getElementById('round-select-b').value;
+selectedSubjects = [selectedSubject];
+} else if (currentTrack === 'C') {
+const pool = getWrongPool(studentId);
+if (pool.length === 0) {
+alert("격파할 오답이 없습니다. 모의고사나 과목별 학습을 먼저 진행해 주세요!");
+return;
+}
+questionsList = JSON.parse(JSON.stringify(pool));
+bootExamSystem();
+return;
+} else {
+alert("학습할 트랙을 먼저 선택해 주세요!");
+return;
+}
+showGlobalLoader(true);
+document.getElementById('connection-error-box').classList.add('hidden');
+try {
+if (isOfflineMode) {
+loadDemoExamDataset();
+} else {
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let query = sb.from('questions')
+.select('*')
+.eq('year', parseInt(selectedYear))
+.eq('exam_round', selectedRound);
+if (currentTrack === 'A') {
+query = query.in('subject', selectedSubjects);
+} else {
+query = query.eq('subject', selectedSubject);
+}
+const { data, error } = await query
+.order('subject', { ascending: true })
+.order('id', { ascending: true });
+if (error) throw error;
+let filteredData = data || [];
+if (filteredData.length > 0 && 'license_class' in filteredData[0]) {
+filteredData = filteredData.filter(q => q.license_class === selectedClass);
+}
+if (!filteredData || filteredData.length === 0) {
+showGlobalLoader(false);
+alert('선택하신 시험지 (' + selectedClass + ' ' + selectedYear + '년 ' + selectedRound + ' - ' + selectedSubject + ') 에 등록된 문제가 데이터베이스에 없습니다. 데모 가상 데이터로 자동 전환되어 체험을 진행합니다.');
+loadDemoExamDataset();
+return;
+}
+questionsList = filteredData;
+bootExamSystem();
+}
+} catch (err) {
+showGlobalLoader(false);
+document.getElementById('connection-error-box').classList.remove('hidden');
+document.getElementById('connection-error-message').innerText = err.message || err;
+console.error("DB connection fail: ", err);
+}
+}
+function useOfflineFallbackData() {
+document.getElementById('connection-error-box').classList.add('hidden');
+loadDemoExamDataset();
+}
+function bootExamSystem() {
+showGlobalLoader(false);
+document.getElementById('lobby-screen').classList.add('hidden');
+document.getElementById('system-workspace').classList.remove('hidden');
+document.getElementById('header-student-badge').classList.remove('hidden');
+const studentId = localStorage.getItem('smart_tutor_student_id');
+const savedName = localStorage.getItem('smart_tutor_student_name') || "";
+document.getElementById('display-student-id').innerText = savedName ? studentId + ' (' + savedName + ')' : '학번: ' + studentId;
+currentNo = 1;
+markedAnswers = {};
+isGradedMap = {};
+wrongAttemptsMap = {};
+showQuestion();
+updateWorkspaceLayout(); // V61 Call layout adjuster
+saveSessionState();
+}
+function updateHeaderVisibility() {
+const teacherBtn = document.getElementById('header-teacher-btn');
+const logoutBtn = document.getElementById('header-logout-btn');
+const studentBadge = document.getElementById('header-student-badge');
+const backToLobbyBtn = document.getElementById('header-back-to-lobby-btn');
+if (currentTrack === 'A' || currentTrack === 'B' || currentTrack === 'C') {
+if (teacherBtn) teacherBtn.classList.add('hidden');
+if (logoutBtn) logoutBtn.classList.add('hidden');
+if (studentBadge) studentBadge.classList.add('hidden');
+if (backToLobbyBtn) backToLobbyBtn.classList.remove('hidden');
+} else {
+if (teacherBtn) teacherBtn.classList.remove('hidden');
+if (logoutBtn) logoutBtn.classList.remove('hidden');
+if (studentBadge) studentBadge.classList.remove('hidden');
+if (backToLobbyBtn) backToLobbyBtn.classList.add('hidden');
+}
+}
+function loadDemoExamDataset() {
+questionsList = [];
+const tags = ["과급기 블레이드 균열", "NAND 게이트 논리회로", "OR 게이트 특성", "NPN 트랜지스터 동작", "논리 기하 구조"];
+selectedSubjects.forEach(sub => {
+const isEng = (sub === '영어');
+// 문항 1
+questionsList.push({
+id: questionsList.length + 1,
+subject: sub,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+license_class: selectedClass,
+question_text: isEng
+? '[' + selectedClass + ' 영어] What is the most appropriate translation for "scavenging air receiver" in marine engines?'
+: '[' + selectedClass + ' ' + sub + ' 전공] 디젤기관의 과급기(Turbocharger) 세정 과정 중 수세정(Water Washing)을 실시할 때 기기의 고온 열충격으로 인한 날개의 서징 균열을 정교하게 방지해야 하는 가장 결정적인 이유는 무엇인가?',
+option_ga: isEng ? "소기 리시버 (소기실)" : "연소 가스 속 황 성분에 의한 실린더 고온 저온부식 방지 목적",
+option_na: isEng ? "배기 매니폴드" : "급격한 공급 수온 차로 인한 회전자(Turbine Rotor) 날개의 열충격 균열 예방 목적",
+option_sa: isEng ? "피스톤 크라운" : "세정액의 과급기 급격한 탄화 서징 작용 방지 목적",
+option_aa: isEng ? "기화기 서브 탱크" : "배기 가압으로 압축기 날개의 불균형 진동 유발 차단 목적",
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: isEng ? "ga" : "na",
+image_url: "",
+concept_tag: isEng ? "선박 전공 영어 필수 어휘" : selectedClass + ' ' + sub + ' 터빈 휠 균열',
+easy_definition: isEng ? "" : '⚓ [' + selectedClass + ' ' + sub + '] 고온 부품에 차가운 세정수가 갑자기 닿으면 온도 차 때문에 쇠가 쩍 갈라지는 열충격(Thermal Shock) 균열 현상이 발생할 수 있습니다.',
+english_translation: isEng ? "주기관(M/E) 모든 실린더의 지압선도(indicator cards)를 채취하여 ( )를 확인하였다. ㉮ 온도 ㉯ 베어링 간극 ㉴ 크랭크 암 디플렉션 ㉵ 연소 상태" : "",
+explanation: isEng
+? '정답분석: 선박 기관 영어에서 Scavenging은 소기(연소 후 가스를 밀어내고 신선한 공기를 채우는 과정)를 의미하며, Air Receiver는 공기 수집기입니다. 따라서 합쳐서 ㉮ 소기 리시버가 정확한 번역입니다.'
+: selectedClass + ' ' + sub + ' 수세정 과급기 날개의 파괴 제어가 핵심 키워드입니다. 배기가스가 통과하는 터빈 쪽은 극단적인 고온 상태이므로, 급격한 세정수 유입으로 발생할 수 있는 부재 균열을 제어하기 위해 공급 수온 조절 지침을 준수해야 합니다.\n보기 분석: ㉯가 과급기 날개 구조물의 직관적인 파괴 제어 요소가 됩니다.'
+});
+// 문항 2
+questionsList.push({
+id: questionsList.length + 1,
+subject: sub,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+license_class: selectedClass,
+question_text: isEng
+? '[' + selectedClass + ' 영어] Choose the best explanation for the logical equation: bar(A * B * C)'
+: '[' + selectedClass + ' ' + sub + ' 제어공학] 다음과 같은 회로에서 출력 Y는? (단, A, B, C는 입력이다.)',
+option_ga: isEng ? "A * B * C" : "A * B * C",
+option_na: isEng ? "A + B + C" : "A + B + C",
+option_sa: "bar(A * B * C)",
+option_aa: "bar(A + B + C)",
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: "sa",
+image_url: "",
+concept_tag: isEng ? "NAND Logical negation translation" : selectedClass + ' ' + sub + ' 논리 곱 부정 회로',
+easy_definition: isEng ? "" : '⚓ [' + selectedClass + ' ' + sub + '] 모든 입력의 곱에 대하여 부정(bar) 처리를 적용한 NAND 논리 기호가 출력 Y가 됨을 실증하는 제어공학 기초 수식입니다.',
+english_translation: isEng ? "논리식 bar(A * B * C)는 전산학 및 디지털 제어 공학에서 입력 A, B, C의 곱에 대한 부정(NAND)을 의미하는 식입니다. ㉮ A * B * C ㉯ A + B + C ㉴ bar(A * B * C) ㉵ bar(A + B + C)" : "",
+explanation: isEng
+? "정답분석: 'bar'는 논리 부정(NOT)을 명문화한 영문 표기이므로 NAND 게이트 회로의 수식에 부합하는 ㉴가 답이 됩니다."
+: '정답분석: 이 회로는 NPN 트랜지스터를 병렬로 제어하는 NAND 논리 게이트입니다. 출력 Y는 모든 입력의 곱을 부정한 Y = bar(A * B * C)가 되어 오버라인이 표기됩니다.'
+});
+// 문항 3
+questionsList.push({
+id: questionsList.length + 1,
+subject: sub,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+license_class: selectedClass,
+question_text: isEng
+? '[' + selectedClass + ' 영어] Translate the maritime phrase: "Close the main fuel valve immediately (bar(A) state)"'
+: '[' + selectedClass + ' ' + sub + ' 디지털회로] NAND의 논리 관계로 옳은 것은? (단, A와 B는 입력 이고 Y는 출력이다.)',
+option_ga: "Y = A * B",
+option_na: "Y = A + B",
+option_sa: "Y = A * B (A * B 위에 바 표시)",
+option_aa: "Y = A + B (A + B 위에 바 표시)",
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: "sa",
+image_url: "",
+concept_tag: isEng ? "Command imperative translation" : selectedClass + ' ' + sub + ' NAND 식 표현',
+easy_definition: isEng ? "" : '⚓ [' + selectedClass + ' ' + sub + '] 논리연산 NAND를 수식으로 작성할 때는 괄호 뒤에 한국어로 지시사항을 삽입하여 화면 렌더러가 실시간으로 윗선(bar)을 씌울 수 있도록 지원합니다.',
+english_translation: isEng ? "주 연료 밸브를 즉시 차단하십시오. ㉮ Y = A * B ㉯ Y = A + B ㉴ Y = A * B (A * B 위에 바 표시) ㉵ Y = A + B (A + B 위에 바 표시)" : "",
+explanation: isEng
+? "정답분석: 긴급 수동 수칙에 대한 독해 및 제어 렌더링 검증입니다."
+: '정답분석: NOT AND의 약자인 NAND는 Y = A * B (A * B 위에 바 표시) 처럼 윗선 오버라인이 A * B 전체에 씌워져야 올바른 수식 표현이 됩니다.'
+});
+// 문항 4
+questionsList.push({
+id: questionsList.length + 1,
+subject: sub,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+license_class: selectedClass,
+question_text: isEng
+? "[" + selectedClass + " 영어] Choose the incorrect representation of De Morgan's laws."
+: "[" + selectedClass + " " + sub + " 논리수학] 다음 논리 연산 중 드 모르간의 정리(De Morgan's laws)로 옳지 않은 것은?",
+option_ga: "\\( \\overline{A+B} = \\bar{A} \\cdot \\bar{B} \\)",
+option_na: "A + B = B + A",
+option_sa: "A · B = B · A",
+option_aa: "\\( \\overline{A \\cdot B} = \\bar{A} \\cdot \\bar{B} \\)",
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: "aa",
+image_url: "",
+concept_tag: isEng ? "Mathematical De Morgan translation" : selectedClass + ' ' + sub + ' 드모르간 정리',
+easy_definition: isEng ? "" : '⚓ [' + selectedClass + ' ' + sub + '] LaTeX 수식 포맷으로 DB에 기록된 오버라인(\\overline{...}) 및 개별 바(\\bar{...}) 기호를 부드러운 웹 표준 폰트 기반의 윗선으로 렌더링합니다.',
+english_translation: isEng ? "드 모르간 법칙의 부정 연산 관계식 중 잘못된 표현을 고르는 수학 논리 문제입니다. ㉮ \\( \\overline{A+B} = \\bar{A} \\cdot \\bar{B} \\) ㉯ A + B = B + A ㉴ A · B = B · A ㉵ \\( \\overline{A \\cdot B} = \\bar{A} \\cdot \\bar{B} \\)" : "",
+explanation: isEng
+? "정답분석: ㉵의 수식은 거짓이며 참된 형태는 곱의 부정이 합의 부정과 곱해져서 개별 합 조건이 되는 \\( \\overline{A \\cdot B} = \\bar{A} + \\bar{B} \\) 여야 합니다."
+: "정답분석: 논리 곱의 부정은 드 모르간의 법칙에 의해 개별 합의 부정이 되어야 하므로 \\( \\overline{A \\cdot B} = \\bar{A} + \\bar{B} \\) 가 참입니다. 따라서 잘못 표기된 ㉵가 답이 됩니다."
+});
+for (let i = 5; i <= 25; i++) {
+questionsList.push({
+id: questionsList.length + 1,
+subject: sub,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+license_class: selectedClass,
+question_text: isEng
+? '[' + selectedClass + ' 영어 Q' + i + '] Select the correct English statement representing maritime rules.'
+: '[' + selectedClass + ' ' + sub + ' 국가자격 기출 Q' + i + '] 해기사 고시 공식 수록 핵심 이론을 검증하기 위한 전공 핵심 문제입니다.',
+option_ga: isEng ? 'Imperative statement GA' : '가상 수록 보기 ㉮입니다. [' + selectedClass + ' ' + sub + ' 전공영역]',
+option_na: isEng ? 'Recommended statement NA (Correct answer)' : '가상 수록 보기 ㉯입니다. (정답 추천)',
+option_sa: isEng ? 'Imperative statement SA' : '가상 수록 보기 ㉴입니다. [' + selectedClass + ' ' + sub + ' 실무개념]',
+option_aa: isEng ? 'Imperative statement AA' : '가상 수록 보기 ㉵입니다.',
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: "na",
+image_url: "",
+concept_tag: tags[(i % tags.length)] + '_' + selectedClass,
+easy_definition: isEng ? "" : '⚓ [' + selectedClass + ' ' + sub + '] ' + i + '번 핵심 해설서 요약: 기출문제 해양 분석집에 준하여 핵심 선박 이론을 압축해 놓았습니다.',
+english_translation: isEng ? '선박 조종 및 탑재 장비 수칙에 입각한 전문 번역문 연습 문항입니다. ㉮ 보기 ㉮ 번역 ㉯ 보기 ㉯ 번역 (정답) ㉴ 보기 ㉴ 번역 ㉵ 보기 ㉵ 번역' : '',
+explanation: isEng
+? '정답분석: 이 독해 문항은 해양법 규정 및 필수 안전 조치 지침에 입각한 문제이며 ㉯가 올바른 서술식 대응문입니다.'
+: '정답분석: 이 문제는 선박 기계 장비 및 구조물 성능 시험에 입각한 문제이며 ㉯가 과학적 기준에 부합하는 답안입니다.'
+});
+}
+});
+bootExamSystem();
+}
+function showQuestion() {
+if (questionsList.length === 0) return;
+const q = questionsList[currentNo - 1];
+let trackName = "";
+if (currentTrack === "A") {
+trackName = "모의고사";
+} else if (currentTrack === "B") {
+trackName = "과목 선택";
+} else if (currentTrack === "C") {
+trackName = "오답 소탕";
+} else if (currentTrack === "CLINIC") {
+trackName = "1:1 오답 클리닉";
+}
+document.getElementById('current-track-tag').innerText = trackName;
+const examGrade = q.license_class || selectedClass;
+if (currentTrack === "C" || currentTrack === "CLINIC") {
+document.getElementById('subject-title').innerText = "[" + examGrade + " " + q.subject + "] 오답 클리닉 피드백";
+} else {
+document.getElementById('subject-title').innerText = "[" + examGrade + " " + q.subject + "] " + q.year + "년 " + q.exam_round;
+}
+document.getElementById('current-num-badge').innerText = currentNo;
+document.getElementById('total-num-badge').innerText = questionsList.length;
+const imgContainer = document.getElementById('image-container');
+const imgElement = document.getElementById('question-image');
+if (q.image_url && q.image_url.trim() !== '') {
+imgElement.src = q.image_url;
+imgContainer.classList.remove('hidden');
+} else {
+imgElement.src = '';
+imgContainer.classList.add('hidden');
+}
+document.getElementById('question-text').innerHTML = "Q" + currentNo + ". " + formatBarText(q.question_text);
+document.getElementById('text-ga').innerHTML = formatBarText(q.option_ga || '');
+document.getElementById('text-na').innerHTML = formatBarText(q.option_na || '');
+document.getElementById('text-sa').innerHTML = formatBarText(q.option_sa || '');
+document.getElementById('text-aa').innerHTML = formatBarText(q.option_aa || '');
+// V63: 실시간 수학 공식 KaTeX 정밀 렌더러 소환 (html 윗선과 분리 처리)
+renderMath('question-text');
+renderMath('text-ga');
+renderMath('text-na');
+renderMath('text-sa');
+renderMath('text-aa');
+// Handle Option Images
+const optionKeys = ['ga', 'na', 'sa', 'aa'];
+optionKeys.forEach(key => {
+const imgUrl = q['option_' + key + '_img'];
+const imgContainer = document.getElementById('img-container-' + key);
+const imgElement = document.getElementById('img-' + key);
+if (imgContainer && imgElement) {
+if (imgUrl && imgUrl.trim() !== '' && imgUrl !== 'NULL' && imgUrl !== 'null') {
+imgElement.src = imgUrl;
+imgContainer.classList.remove('hidden');
+} else {
+imgElement.src = '';
+imgContainer.classList.add('hidden');
+}
+}
+});
+resetOptionsStyle();
+const previouslySelected = markedAnswers[currentNo - 1];
+if (previouslySelected) {
+applySelectionStyle(previouslySelected);
+}
+updateHeaderVisibility();
+// V61 Placeholder and Block Control inside showQuestion
+if (currentTrack === 'A') {
+document.getElementById('tutor-placeholder-a').classList.remove('hidden');
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+document.getElementById('active-explanation-block').classList.add('hidden');
+document.getElementById('exam-summary-block').classList.add('hidden');
+document.getElementById('btn-grade-b').classList.add('hidden');
+document.getElementById('warp-return-container').classList.add('hidden');
+document.getElementById('clinic-return-container').classList.add('hidden');
+if (currentNo === questionsList.length) {
+document.getElementById('btn-next').classList.add('hidden');
+document.getElementById('btn-submit-a').classList.remove('hidden');
+} else {
+document.getElementById('btn-next').classList.remove('hidden');
+document.getElementById('btn-submit-a').classList.add('hidden');
+}
+} else if (currentTrack === 'CLINIC') {
+document.getElementById('tutor-placeholder-a').classList.add('hidden');
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+document.getElementById('exam-summary-block').classList.add('hidden');
+document.getElementById('btn-submit-a').classList.add('hidden');
+document.getElementById('warp-return-container').classList.add('hidden');
+document.getElementById('clinic-return-container').classList.remove('hidden');
+document.getElementById('btn-grade-b').classList.add('hidden');
+showTrackBExplanation(q);
+disableAnswerSelections(true);
+const keys = ['ga', 'na', 'sa', 'aa'];
+keys.forEach(key => {
+const btn = document.getElementById("opt-" + key);
+if (btn) {
+if (key === q.correct_answer) {
+btn.className = "option-btn w-full text-left bg-[#09291E]/80 border-2 border-emerald-400 p-4 rounded-2xl text-white flex items-center space-x-3 pointer-events-none shadow-md shadow-emerald-400/10";
+} else if (key === q.student_wrong_val) {
+btn.className = "option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-rose-300 flex items-center space-x-3 pointer-events-none shadow-md shadow-rose-500/10 animate-pulse";
+} else {
+btn.className = "option-btn w-full text-left bg-[#0B132B]/40 border border-[#3A506B]/20 p-4 rounded-2xl text-slate-500 flex items-center space-x-3 pointer-events-none opacity-40";
+}
+}
+});
+} else { // Track B (과목선택) or Track C (오답소탕)
+document.getElementById('tutor-placeholder-a').classList.add('hidden');
+document.getElementById('exam-summary-block').classList.add('hidden');
+document.getElementById('btn-submit-a').classList.add('hidden');
+document.getElementById('warp-return-container').classList.add('hidden');
+document.getElementById('clinic-return-container').classList.add('hidden');
+if (isGradedMap[currentNo - 1]) {
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+showTrackBExplanation(q);
+disableAnswerSelections(true);
+document.getElementById('btn-grade-b').classList.add('hidden');
+} else {
+document.getElementById('active-explanation-block').classList.add('hidden');
+document.getElementById('tutor-placeholder-b').classList.remove('hidden'); // V61
+disableAnswerSelections(false);
+document.getElementById('btn-grade-b').classList.remove('hidden');
+const wrongAttempts = wrongAttemptsMap[currentNo - 1] || [];
+wrongAttempts.forEach(wrongKey => {
+const wrongBtn = document.getElementById("opt-" + wrongKey);
+if (wrongBtn) {
+wrongBtn.className = "option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-rose-300 flex items-center space-x-3 pointer-events-none opacity-50";
+}
+});
+}
+}
+updateWorkspaceLayout(); // V61 Trigger dynamic workspace grid resizing
+}
+function resetOptionsStyle() {
+const keys = ['ga', 'na', 'sa', 'aa'];
+keys.forEach(key => {
+const btn = document.getElementById("opt-" + key);
+if (btn) {
+btn.className = "option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group";
+}
+});
+}
+function applySelectionStyle(key) {
+const btn = document.getElementById("opt-" + key);
+if (btn) {
+btn.className = "option-btn w-full text-left bg-emerald-950/30 border-2 border-emerald-400 p-4 rounded-2xl text-white shadow-md shadow-emerald-400/5 transition-all duration-200 flex items-center space-x-3";
+}
+}
+function disableAnswerSelections(shouldDisable) {
+const btns = document.querySelectorAll('.option-btn');
+btns.forEach(btn => {
+if (shouldDisable) {
+btn.classList.add('pointer-events-none', 'opacity-80');
+} else {
+btn.classList.remove('pointer-events-none', 'opacity-80');
+}
+});
+}
+function markAnswer(key) {
+const qIndex = currentNo - 1;
+if (currentTrack !== 'A' && isGradedMap[qIndex]) return;
+const wrongAttempts = wrongAttemptsMap[qIndex] || [];
+if (wrongAttempts.includes(key)) return;
+markedAnswers[qIndex] = key;
+resetOptionsStyle();
+wrongAttempts.forEach(wrongKey => {
+const wrongBtn = document.getElementById("opt-" + wrongKey);
+if (wrongBtn) {
+wrongBtn.className = "option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-rose-300 flex items-center space-x-3 pointer-events-none opacity-50";
+}
+});
+applySelectionStyle(key);
+saveSessionState();
+}
+function nextQuestion() {
+if (currentNo < questionsList.length) {
+currentNo++;
+showQuestion();
+saveSessionState();
+} else if (currentNo === questionsList.length) {
+if (currentTrack === 'B') {
+jumpToNextRoundPrompt();
+} else if (currentTrack === 'CLINIC') {
+returnToTeacherDashboardFromClinic();
+}
+}
+}
+function prevQuestion() {
+if (currentNo > 1) {
+currentNo--;
+showQuestion();
+saveSessionState();
+}
+}
+function jumpToNextRoundPrompt() {
+const rounds = ['제1회 정기시험', '제2회 정기시험', '제3회 정기시험', '제4회 정기시험'];
+const years = ['2026', '2025', '2024']; // V64: Updated years list for jump prompt
+let nextYear = selectedYear;
+let nextRound = "";
+const rIdx = rounds.indexOf(selectedRound);
+if (rIdx < 3) {
+nextRound = rounds[rIdx + 1];
+} else {
+const yIdx = years.indexOf(selectedYear);
+if (yIdx < years.length - 1) {
+nextYear = years[yIdx + 1];
+nextRound = rounds[0];
+} else {
+alert("축하합니다! 마지막 기출문제 수록분까지 완주하셨습니다! 대단합니다! ⚓ 학습 대기실로 돌아갑니다.");
+logoutToLobby();
+return;
+}
+}
+const conf = confirm("현재 회차의 모든 학습을 성공적으로 정복하셨습니다!\n다음 연계 회차인 [ " + nextYear + "년 " + nextRound + " ] 시험으로 이동하여 도전을 계속하시겠습니까?");
+if (conf) {
+selectedYear = nextYear;
+selectedRound = nextRound;
+const yrSelect = document.getElementById('year-select-b');
+const rndSelect = document.getElementById('round-select-b');
+if (yrSelect) yrSelect.value = nextYear;
+if (rndSelect) rndSelect.value = nextRound;
+startSelectedExam();
+}
+}
+function checkTrackBAnswer() {
+const qIndex = currentNo - 1;
+const q = questionsList[qIndex];
+const userChoice = markedAnswers[qIndex];
+if (!userChoice) {
+alert("정답 확인을 위해 보기를 먼저 선택해 주세요!");
+return;
+}
+const isCorrect = userChoice === q.correct_answer;
+if (isCorrect) {
+isGradedMap[qIndex] = true;
+disableAnswerSelections(true);
+document.getElementById('btn-grade-b').classList.add('hidden');
+showTrackBExplanation(q);
+updateWorkspaceLayout(); // V65: Update workspace layout immediately to show explanation panel
+saveSessionState();
+alert("정답입니다! 🎉 3단계 정밀 AI 스마트 해설서가 열렸습니다.");
+} else {
+if (!wrongAttemptsMap[qIndex]) {
+wrongAttemptsMap[qIndex] = [];
+}
+if (!wrongAttemptsMap[qIndex].includes(userChoice)) {
+wrongAttemptsMap[qIndex].push(userChoice);
+}
+const btn = document.getElementById("opt-" + userChoice);
+if (btn) {
+btn.className = "option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-rose-300 flex items-center space-x-3 pointer-events-none opacity-50";
+}
+delete markedAnswers[qIndex];
+const studentId = localStorage.getItem('smart_tutor_student_id') || document.getElementById('student-id-input').value.trim();
+if (studentId) {
+let pool = getWrongPool(studentId);
+if (!pool.some(item => item.question_text === q.question_text)) {
+pool.push(q);
+saveWrongPool(studentId, pool);
+updateSelfDiagnosis(studentId);
+}
+}
+saveSessionState();
+const block = document.getElementById('active-explanation-block');
+block.innerHTML = '<div class="p-6 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-center animate-fadeIn space-y-4">' +
+'<div class="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/20 text-xl">' +
+'<i class="fa-solid fa-triangle-exclamation"></i>' +
+'</div>' +
+'<h4 class="text-xs font-black text-rose-400">오답입니다! 다시 고민해 보세요.</h4>' +
+'<p class="text-[11px] text-slate-400 leading-relaxed">틀린 보기는 제외하고 다시 도전할 수 있습니다. 끈기가 최고의 해기사 면허 지름길입니다! ⚓</p>' +
+'</div>';
+block.classList.remove('hidden');
+document.getElementById('tutor-placeholder-a').classList.add('hidden');
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+// V62: 오답 블록에서도 텍스트 렌더링 호출
+renderMath('active-explanation-block');
+alert("오답입니다. 다른 보기를 선택하여 다시 도전해 보세요! ⚓"); // V65: Alert wrong answer immediately since right panel is hidden
+}
+}
+// V60 핵심 패치: 영어 번역 전용 미니멀 점선 구분형 레이아웃 가공 함수
+function formatEnglishTranslation(text) {
+if (!text) return "이 문항에는 아직 등록된 영어 번역이 존재하지 않습니다.";
+const match = text.match(/[㉮-㉿]/);
+if (!match) {
+return `<div class="text-[13px] text-slate-200 leading-relaxed">${formatBarText(text)}</div>`;
+}
+const splitIndex = match.index;
+const questionPart = text.substring(0, splitIndex).trim();
+const optionsPart = text.substring(splitIndex).trim();
+const optionItems = [];
+const optionRegex = /([㉮-㉿])\s*([^㉮-㉿]+)/g;
+let optMatch;
+while ((optMatch = optionRegex.exec(optionsPart)) !== null) {
+const symbol = optMatch[1];
+let val = optMatch[2].trim();
+val = val.replace(/,\s*$/, "").trim();
+optionItems.push(`<div class="flex items-start"><span class="text-emerald-400 font-bold mr-1.5">${symbol}</span><span>${formatBarText(val)}</span></div>`);
+}
+if (optionItems.length === 0) {
+return `
+<div class="space-y-3">
+<div class="text-[13px] text-slate-200 leading-relaxed">${formatBarText(questionPart)}</div>
+<div class="border-t border-dashed border-slate-700/60 my-2"></div>
+<div class="text-[12px] text-slate-300 leading-relaxed">${formatBarText(optionsPart)}</div>
+</div>
+`;
+}
+return `
+<div class="space-y-3 animate-fadeIn">
+<div class="text-[13px] text-slate-200 leading-relaxed">${formatBarText(questionPart)}</div>
+<div class="border-t border-dashed border-slate-700/60 my-2"></div>
+<div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] text-slate-300">
+${optionItems.join('')}
+</div>
+</div>
+`;
+}
+// V59+V60 핵심 패치: 과목이 '영어'인 경우에는 '쉬운 개념 정의' 대신 '영어 번역'을 동적으로 표시하는 스마트 렌더링 블록
+function getExplanationBlocksHtml(q) {
+const isEnglish = (q.subject === '영어');
+const displayTitle = isEnglish ? '영어 번역' : '쉬운 개념 정의';
+const iconClass = isEnglish ? 'fa-solid fa-language text-emerald-400' : 'fa-solid fa-book-open text-teal-400';
+const textCol = isEnglish ? 'text-emerald-400' : 'text-teal-400';
+const displayContentHtml = isEnglish
+? formatEnglishTranslation(q.english_translation)
+: formatBarText(q.easy_definition || "이 문항에는 아직 수록된 핵심개념 요약집이 존재하지 않습니다.");
+return '<!-- 1. 핵심 용어 블록 -->' +
+'<div class="bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/50 space-y-2 shadow-inner mb-4 animate-fadeIn">' +
+'<div class="flex items-center space-x-2 text-[#5BC0BE] text-xs font-bold uppercase tracking-wider">' +
+'<i class="fa-solid fa-tags"></i>' +
+'<span>핵심 용어</span>' +
+'</div>' +
+'<div class="text-sm text-white font-extrabold leading-relaxed">' + formatBarText(q.concept_tag || "공학 개념") + '</div>' +
+'</div>' +
+'<!-- 2. ' + displayTitle + ' 블록 -->' +
+'<div class="bg-[#0B132B]/80 p-5 rounded-2xl border border-[#3A506B]/40 space-y-2 mb-4 animate-fadeIn">' +
+'<div class="flex items-center space-x-2 ' + textCol + ' text-xs font-bold uppercase tracking-wider">' +
+'<i class="' + iconClass + '"></i>' +
+'<span>' + displayTitle + '</span>' +
+'</div>' +
+'<div class="text-sm text-slate-300 font-semibold leading-relaxed">' + displayContentHtml + '</div>' +
+'</div>' +
+'<!-- 3. 정답 및 보기 원리 분석 블록 -->' +
+'<div class="bg-[#0B132B]/60 p-5 rounded-2xl border border-[#3A506B]/30 space-y-2 animate-fadeIn">' +
+'<div class="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">' +
+'<i class="fa-solid fa-lightbulb"></i>' +
+'<span>정답 및 보기 원리 분석</span>' +
+'</div>' +
+'<div class="text-sm text-slate-300 font-medium leading-relaxed space-y-2 whitespace-pre-line">' + formatBarText(q.explanation || "이 문항에는 아직 수록된 오답 해설집이 존재하지 않습니다.").replace(/㉮/g, '<b>㉮</b>').replace(/㉯/g, '<b>㉯</b>').replace(/㉴/g, '<b>㉴</b>').replace(/㉵/g, '<b>㉵</b>') + '</div>' +
+'</div>';
+}
+function showTrackBExplanation(q) {
+const block = document.getElementById('active-explanation-block');
+block.innerHTML = '';
+block.classList.remove('hidden');
+const korMap = { ga: '㉮', na: '㉯', sa: '㉴', aa: '㉵', undefined: '미선택' };
+if (currentTrack === 'CLINIC') {
+const badgeTpl = document.getElementById('tpl-badge-incorrect').content.cloneNode(true);
+const title = badgeTpl.querySelector('.incorrect-title-label');
+title.innerText = "🩺 1:1 오답 클리닉 피드백";
+const studentWrongKey = q.student_wrong_val || 'undefined';
+badgeTpl.querySelector('.incorrect-subtitle-label').innerHTML = '학생 마킹: <span class="text-rose-400 font-bold">' + korMap[studentWrongKey] + '</span> | 정답: <span class="text-emerald-400 font-bold">' + korMap[q.correct_answer] + '</span>';
+const outerDiv = document.createElement('div');
+outerDiv.id = 'grade-badge-card';
+outerDiv.className = "p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 mb-4 animate-fadeIn";
+outerDiv.appendChild(badgeTpl);
+block.appendChild(outerDiv);
+} else {
+const userChoice = markedAnswers[currentNo - 1] || q.correct_answer;
+const badgeTpl = document.getElementById('tpl-badge-correct').content.cloneNode(true);
+const title = badgeTpl.querySelector('.correct-title-label');
+if (currentTrack === 'C') {
+title.innerText = "오답 격파 성공!";
+} else {
+title.innerText = "정답입니다! 완벽한 해상공학적 판단입니다.";
+}
+badgeTpl.querySelector('.correct-subtitle-label').innerText = "마킹한 답: " + korMap[userChoice] + " | 정답: " + korMap[q.correct_answer];
+const outerDiv = document.createElement('div');
+outerDiv.id = 'grade-badge-card';
+outerDiv.className = "p-4 rounded-xl bg-[#09291E]/80 border border-emerald-500/30 mb-4 animate-fadeIn";
+outerDiv.appendChild(badgeTpl);
+block.appendChild(outerDiv);
+}
+if (currentTrack === 'C') {
+const studentId = localStorage.getItem('smart_tutor_student_id') || document.getElementById('student-id-input').value.trim();
+if (studentId) {
+let pool = getWrongPool(studentId);
+pool = pool.filter(item => item.question_text !== q.question_text);
+saveWrongPool(studentId, pool);
+updateSelfDiagnosis(studentId);
+}
+}
+const explainBlocks = document.createElement('div');
+explainBlocks.className = "space-y-4";
+explainBlocks.innerHTML = getExplanationBlocksHtml(q);
+block.appendChild(explainBlocks);
+// V62: 실시간 스마트 해설서 수학 공식 렌더링 호출
+renderMath('active-explanation-block');
+const hasEmptyExplanation = (q.subject === '영어')
+? (!q.english_translation || !q.explanation)
+: (!q.easy_definition || !q.explanation);
+if (hasEmptyExplanation) {
+const userChoice = markedAnswers[currentNo - 1] || q.correct_answer;
+askAITutorLiveBackup(q, true, korMap[userChoice], korMap[q.correct_answer]);
+} else {
+const assistBlock = document.getElementById('gemini-live-assist');
+if (assistBlock) assistBlock.classList.add('hidden');
+}
+}
+async function askAITutorLiveBackup(q, isCorrect, userKor, correctKor) {
+let assistBlock = document.getElementById('gemini-live-assist');
+if (!assistBlock) {
+assistBlock = document.createElement('div');
+assistBlock.id = 'gemini-live-assist';
+assistBlock.className = 'bg-indigo-950/20 border border-indigo-500/20 p-4 rounded-2xl space-y-2 mt-4';
+document.getElementById('active-explanation-block').appendChild(assistBlock);
+}
+assistBlock.classList.remove('hidden');
+assistBlock.innerHTML = '<span class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">AI Live Tutor</span>' +
+'<p id="gemini-ai-message" class="text-sm text-slate-300 leading-relaxed"><span class="text-slate-400"><i class="fa-solid fa-circle-notch animate-spin"></i> AI 튜터가 실시간 해설을 요약 정밀 생성 중...</span></p>';
+try {
+setTimeout(() => {
+const aiMessage = document.getElementById('gemini-ai-message');
+if (aiMessage) {
+aiMessage.innerHTML = "⚓ <strong>과급기 정밀 오답진단 완료:</strong> 본 고난도 문항은 내연기관 과급 장치의 실시간 고온 열팽창 불균형을 경감하는 제어에 관련된 이론입니다. 냉각수의 온도 and 블레이드의 고온 가스 접촉부 간 온도차가 임계치를 초과할 경우 응력 파괴를 초래할 수 있습니다.";
+renderMath('gemini-live-assist'); // V62
+}
+}, 1000);
+} catch (err) {
+const aiMessage = document.getElementById('gemini-ai-message');
+if (aiMessage) aiMessage.innerText = "통신 불가로 실시간 백업 해설을 출력하지 못했습니다.";
+}
+}
+// V61 핵심 패치: [모의고사] Track A 진행 시 오른쪽 영역 자동 숨김 및 풀스크린 조절 레이아웃 엔진
+function updateWorkspaceLayout() {
+const leftPanel = document.getElementById('workspace-left-panel');
+const rightPanel = document.getElementById('workspace-right-panel');
+if (!leftPanel || !rightPanel) return;
+if (currentTrack === 'A') {
+const isExamSubmitted = !document.getElementById('exam-summary-block').classList.contains('hidden');
+const isWarping = !document.getElementById('warp-return-container').classList.contains('hidden');
+if (isExamSubmitted || isWarping) {
+// 모의고사 제출 완료 및 오답 복습 단계에서는 8:4 화면으로 전환
+leftPanel.className = "col-span-12 lg:col-span-8 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto animate-fadeIn";
+rightPanel.classList.remove('hidden');
+} else {
+// 모의고사 시험 진행 중에는 가로폭을 12칸 전체(100%)로 채우고 오른쪽 빈 해설판은 숨김
+leftPanel.className = "col-span-12 lg:col-span-12 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto animate-fadeIn";
+rightPanel.classList.add('hidden');
+}
+} else if (currentTrack === 'B' || currentTrack === 'C') {
+// 과목선택(B) 및 오답소탕(C) 모드에서는 정답을 맞춘 경우에만 8:4 분할 레이아웃 적용, 맞추기 전에는 12:0 전체 화면
+if (isGradedMap[currentNo - 1]) {
+leftPanel.className = "col-span-12 lg:col-span-8 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto animate-fadeIn";
+rightPanel.classList.remove('hidden');
+} else {
+leftPanel.className = "col-span-12 lg:col-span-12 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto animate-fadeIn";
+rightPanel.classList.add('hidden');
+}
+} else {
+// [클리닉] 모드 등에서는 8:4 분할 레이아웃 고정 유지
+leftPanel.className = "col-span-12 lg:col-span-8 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto";
+rightPanel.classList.remove('hidden');
+}
+}
+async function submitTrackAExam() {
+let blankCount = 0;
+for (let i = 0; i < questionsList.length; i++) {
+if (!markedAnswers[i]) blankCount++;
+}
+if (blankCount > 0) {
+const conf = confirm("아직 마킹하지 않은 문항이 " + blankCount + "개 존재합니다. 이대로 답안지를 최종 제출하시겠습니까?");
+if (!conf) return;
+} else {
+const conf = confirm("마킹한 답안지를 최종 제출하시겠습니까? 제출 후 성적이 채점되고 오답 노트가 열립니다.");
+if (!conf) return;
+}
+showGlobalLoader(true);
+let correctCount = 0;
+let wrongItems = [];
+let currentWrongPoolAdditions = [];
+questionsList.forEach((q, idx) => {
+const userChoice = markedAnswers[idx];
+const isCorrect = userChoice === q.correct_answer;
+if (isCorrect) {
+correctCount++;
+} else {
+wrongItems.push({
+index: idx,
+qNum: idx + 1,
+subject: q.subject,
+userVal: userChoice,
+correctVal: q.correct_answer
+});
+currentWrongPoolAdditions.push(q);
+}
+});
+const rawScore = Math.round((correctCount / questionsList.length) * 100);
+const studentId = localStorage.getItem('smart_tutor_student_id');
+const studentName = localStorage.getItem('smart_tutor_student_name') || "";
+const baseName = studentName ? studentId + " " + studentName : studentId;
+const combinedName = "[" + selectedClass + "] " + baseName;
+let dbWrongPayload = wrongItems.map(item => ({ qNum: item.qNum, subject: item.subject, year: selectedYear, round: selectedRound, userVal: item.userVal, license_class: selectedClass }));
+if (dbWrongPayload.length === 0) {
+const fallbackSub = (selectedSubjects && selectedSubjects[0]) || "기관1";
+dbWrongPayload = [{ qNum: null, subject: fallbackSub, isMeta: true, year: selectedYear, round: selectedRound, userVal: null, license_class: selectedClass }];
+}
+try {
+if (!isOfflineMode) {
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { error } = await sb.from('exam_results').insert([{
+student_name: combinedName,
+score: rawScore,
+track_type: 'A',
+total_ques: questionsList.length,
+wrong_answers: JSON.stringify(dbWrongPayload)
+}]);
+if (error) throw error;
+}
+} catch (err) {
+console.warn("Could not save score to DB (normal in demo mode):", err);
+}
+if (studentId) {
+let pool = getWrongPool(studentId);
+currentWrongPoolAdditions.forEach(q => {
+if (!pool.some(item => item.question_text === q.question_text)) {
+pool.push(q);
+}
+});
+saveWrongPool(studentId, pool);
+updateSelfDiagnosis(studentId);
+}
+clearSessionState(studentId);
+showGlobalLoader(false);
+document.getElementById('tutor-placeholder-a').classList.add('hidden');
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+document.getElementById('active-explanation-block').classList.add('hidden');
+document.getElementById('warp-return-container').classList.add('hidden');
+const summaryBlock = document.getElementById('exam-summary-block');
+summaryBlock.classList.remove('hidden');
+document.getElementById('summary-score').innerText = rawScore;
+document.getElementById('wrong-count').innerText = "(" + wrongItems.length + "개 오답)";
+const warpListContainer = document.getElementById('wrong-warp-list');
+warpListContainer.innerHTML = '';
+if (wrongItems.length === 0) {
+warpListContainer.innerHTML = '<p class="text-xs text-emerald-400 font-bold text-center py-4">축하합니다! 100점 만점으로 오답이 없습니다. ⚓</p>';
+} else {
+const korMap = { ga: '㉮', na: '㉯', sa: '㉴', aa: '㉵', undefined: '미선택' };
+wrongItems.forEach(item => {
+const btn = document.createElement('button');
+btn.className = "w-full text-left bg-[#0B132B]/80 hover:bg-rose-950/30 border border-[#3A506B]/50 hover:border-rose-500/60 p-3 rounded-xl transition-all duration-200 flex justify-between items-center text-xs group";
+btn.onclick = () => warpToQuestionAndShowExplanation(item.index);
+btn.innerHTML = '<div class="flex items-center space-x-2">' +
+'<span class="w-5 h-5 rounded-md bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-[10px]">Q' + item.qNum + '</span>' +
+'<span class="font-semibold text-slate-300 group-hover:text-rose-300 transition">[' + item.subject + '] 오답 해설 확인</span>' +
+'</div>' +
+'<span class="text-[10px] text-slate-500">나의 마킹: ' + korMap[item.userVal] + ' <i class="fa-solid fa-chevron-right text-[#5BC0BE] ml-1.5"></i></span>';
+warpListContainer.appendChild(btn);
+});
+}
+updateWorkspaceLayout(); // V61
+alert("채점 완료! 오답노트가 생성되었습니다. 오답 항목을 누르시면 Supabase 상세 해설서가 실시간 연동됩니다.");
+}
+function warpToQuestionAndShowExplanation(index) {
+currentNo = index + 1;
+showQuestion();
+document.getElementById('tutor-placeholder-a').classList.add('hidden');
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+document.getElementById('exam-summary-block').classList.add('hidden');
+document.getElementById('warp-return-container').classList.remove('hidden');
+const q = questionsList[index];
+const block = document.getElementById('active-explanation-block');
+block.innerHTML = '';
+block.classList.remove('hidden');
+const userChoice = markedAnswers[index];
+const korMap = { ga: '㉮', na: '㉯', sa: '㉴', aa: '㉵', undefined: '미선택' };
+const badgeTpl = document.getElementById('tpl-badge-incorrect').content.cloneNode(true);
+badgeTpl.querySelector('.incorrect-title-label').innerText = "Q" + currentNo + " 복습 분석 모드";
+badgeTpl.querySelector('.incorrect-subtitle-label').innerHTML = '선택: ' + korMap[userChoice] + ' | 정답: <span class="text-emerald-400 font-semibold">' + korMap[q.correct_answer] + '</span>';
+const outerDiv = document.createElement('div');
+outerDiv.id = 'grade-badge-card';
+outerDiv.className = "p-4 rounded-xl bg-[#1c2541] border border-rose-500/40 mb-4 animate-fadeIn";
+outerDiv.appendChild(badgeTpl);
+block.appendChild(outerDiv);
+const templateBlock = document.createElement('div');
+templateBlock.className = "space-y-4";
+templateBlock.innerHTML = getExplanationBlocksHtml(q);
+block.appendChild(templateBlock);
+// V62: 오답노트 복습 시에도 실시간 수학 공식 KaTeX 렌더링 호출
+renderMath('active-explanation-block');
+resetOptionsStyle();
+if (userChoice && userChoice !== q.correct_answer) {
+const wrongBtn = document.getElementById("opt-" + userChoice);
+if (wrongBtn) wrongBtn.className = "option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-white flex items-center space-x-3 pointer-events-none";
+}
+const correctBtn = document.getElementById("opt-" + q.correct_answer);
+if (correctBtn) {
+correctBtn.className = "option-btn w-full text-left bg-emerald-950/20 border-2 border-emerald-400 p-4 rounded-2xl text-white flex items-center space-x-3 pointer-events-none";
+}
+updateWorkspaceLayout(); // V61
+}
+function returnToSummaryList() {
+document.getElementById('active-explanation-block').classList.add('hidden');
+document.getElementById('tutor-placeholder-b').classList.add('hidden'); // V61
+document.getElementById('warp-return-container').classList.add('hidden');
+document.getElementById('exam-summary-block').classList.remove('hidden');
+updateWorkspaceLayout(); // V61
+}
+function returnToTeacherDashboardFromClinic() {
+document.getElementById('system-workspace').classList.add('hidden');
+document.getElementById('header-student-badge').classList.add('hidden');
+document.getElementById('teacher-dashboard-modal').classList.remove('hidden');
+}
+function logoutToLobby() {
+const hasAnswers = Object.keys(markedAnswers).length > 0;
+const isWorkspaceVisible = !document.getElementById('system-workspace').classList.contains('hidden');
+const isSummaryVisible = !document.getElementById('exam-summary-block').classList.contains('hidden');
+if (isWorkspaceVisible && !isSummaryVisible && hasAnswers) {
+const conf = confirm("정말 학습 대기실로 돌아가시겠습니까?\n현재까지 마킹한 진행 상황은 이 기기(브라우저)에 안전하게 자동 저장되어 나중에 학번을 입력하면 다시 이어서 푸실 수 있습니다.");
+if (!conf) return;
+}
+document.getElementById('system-workspace').classList.add('hidden');
+document.getElementById('header-student-badge').classList.add('hidden');
+const backToLobbyBtn = document.getElementById('header-back-to-lobby-btn');
+if (backToLobbyBtn) backToLobbyBtn.classList.add('hidden');
+document.getElementById('lobby-screen').classList.remove('hidden');
+const studentId = document.getElementById('student-id-input').value.trim();
+checkResumeSession(studentId);
+updateSelfDiagnosis(studentId);
+const teacherBtn = document.getElementById('header-teacher-btn');
+const logoutBtn = document.getElementById('header-logout-btn');
+if (teacherBtn) teacherBtn.classList.remove('hidden');
+if (logoutBtn) logoutBtn.classList.remove('hidden');
+}
+function showGlobalLoader(show) {
+let loader = document.getElementById('system-loader');
+if (!loader && show) {
+loader = document.createElement('div');
+loader.id = 'system-loader';
+loader.className = 'fixed inset-0 z-[100] bg-black/60 flex flex-col items-center justify-center space-y-4';
+loader.innerHTML = '<div class="w-12 h-12 border-4 border-slate-600 border-t-[#5BC0BE] rounded-full animate-spin"></div>' +
+'<p class="text-xs text-[#5BC0BE] font-bold tracking-widest animate-pulse">SUPABASE SECURE CONNECTING...</p>';
+document.body.appendChild(loader);
+} else if (loader && !show) {
+loader.remove();
+}
+}
+function openTeacherAuthModal() {
+document.getElementById('teacher-auth-modal').classList.remove('hidden');
+}
+function closeTeacherAuthModal() {
+document.getElementById('teacher-auth-modal').classList.add('hidden');
+document.getElementById('teacher-pw-input').value = '';
+}
+function verifyTeacherPassword() {
+const input = document.getElementById('teacher-pw-input').value;
+if (input === 'admin123' || input === 'teacher') {
+closeTeacherAuthModal();
+document.getElementById('teacher-dashboard-modal').classList.remove('hidden');
+fetchLMSData();
+} else {
+alert("교사용 인증 비밀번호가 일치하지 않습니다!");
+}
+}
+function closeTeacherDashboard() {
+document.getElementById('teacher-dashboard-modal').classList.add('hidden');
+}
+function toggleSelectAllDashboardStudents(masterCheckbox) {
+const isChecked = masterCheckbox.checked;
+const classSubmissions = dbSubmissionsRaw.filter(row => getSubmissionClass(row) === activeDashboardClass);
+classSubmissions.forEach(row => {
+checkedStudentsMap[row.student_name] = isChecked;
+});
+renderTeacherDashboard();
+}
+function toggleIndividualDashboardStudent(studentName, isChecked) {
+checkedStudentsMap[studentName] = isChecked;
+const master = document.getElementById('selectAllCheckbox');
+if (master) {
+const classSubmissions = dbSubmissionsRaw.filter(row => getSubmissionClass(row) === activeDashboardClass);
+const totalActive = classSubmissions.length;
+const totalChecked = classSubmissions.filter(r => checkedStudentsMap[r.student_name]).length;
+master.checked = (totalActive === totalChecked);
+}
+renderTeacherDashboard();
+}
+function changeDashboardSubjectFilter(val) {
+activeDashboardSubject = val;
+renderTeacherDashboard();
+}
+function changeDashboardClassFilter(licClass) {
+activeDashboardClass = licClass;
+const btn3 = document.getElementById('btn-dash-class-3');
+const btn4 = document.getElementById('btn-dash-class-4');
+if (licClass === '3급') {
+btn3.className = "flex-1 py-2.5 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200";
+btn4.className = "flex-1 py-2.5 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200";
+} else {
+btn4.className = "flex-1 py-2.5 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200";
+btn3.className = "flex-1 py-2.5 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200";
+}
+const classSubmissions = dbSubmissionsRaw.filter(row => getSubmissionClass(row) === activeDashboardClass);
+if (classSubmissions.length > 0) {
+selectedDetailStudent = classSubmissions[0].student_name;
+selectStudentRowDetail(selectedDetailStudent);
+} else {
+selectedDetailStudent = null;
+renderTeacherDashboard();
+}
+}
+function getSubmissionClass(row) {
+const name = row.student_name || "";
+if (name.startsWith("[3급]")) return "3급";
+if (name.startsWith("[4급]")) return "4급";
+try {
+const wrongs = JSON.parse(row.wrong_answers || '[]');
+for (let item of wrongs) {
+if (item.license_class) return item.license_class;
+}
+} catch (e) {}
+return "3급";
+}
+function cleanStudentName(name) {
+if (!name) return "";
+return name.replace(/^\?[3급\?]\s*/, '').replace(/^\?[4급\?]\s*/, '').replace(/^\[3급\]\s*/, '').replace(/^\[4급\]\s*/, '');
+}
+function selectStudentRowDetail(name) {
+selectedDetailStudent = name;
+const studentRow = dbSubmissionsRaw.find(r => r.student_name === name);
+if (!studentRow) {
+activeDetailSubject = "기관1";
+activeDetailSession_2nd = "전체";
+renderTeacherDashboard();
+return;
+}
+let wrongArr = [];
+try {
+wrongArr = JSON.parse(studentRow.wrong_answers || '[]');
+} catch (e) {
+wrongArr = [];
+}
+wrongArr = wrongArr.filter(item => item.qNum !== null);
+const wrongSubjectsSet = new Set();
+wrongArr.forEach(item => {
+if (item.subject) wrongSubjectsSet.add(item.subject);
+});
+const wrongSubjects = Array.from(wrongSubjectsSet);
+activeDetailSubject = wrongSubjects[0] || "기관1";
+const wrongsForSubject = wrongArr.filter(item => item.subject === activeDetailSubject);
+const sessionsSet = new Set();
+wrongsForSubject.forEach(item => {
+if (item.year && item.round) {
+sessionsSet.add(item.year + "년|" + item.round);
+}
+});
+const sessionList = Array.from(sessionsSet);
+activeDetailSession_2nd = sessionList[0] || "전체";
+renderTeacherDashboard();
+}
+function changeDetailSubjectPillFilter(sub) {
+activeDetailSubject = sub;
+const studentRow = dbSubmissionsRaw.find(r => r.student_name === selectedDetailStudent);
+if (!studentRow) {
+activeDetailSession_2nd = "전체";
+renderTeacherDashboard();
+return;
+}
+let wrongArr = [];
+try {
+wrongArr = JSON.parse(studentRow.wrong_answers || '[]');
+} catch (e) {}
+wrongArr = wrongArr.filter(item => item.qNum !== null);
+const wrongsForSubject = wrongArr.filter(item => item.subject === sub);
+const sessionsSet = new Set();
+wrongsForSubject.forEach(item => {
+if (item.year && item.round) {
+sessionsSet.add(item.year + "년|" + item.round);
+}
+});
+const sessionList = Array.from(sessionsSet);
+activeDetailSession_2nd = sessionList[0] || "전체";
+renderTeacherDashboard();
+}
+function renderTeacherDashboard() {
+const classSubmissionsRaw = dbSubmissionsRaw.filter(row => getSubmissionClass(row) === activeDashboardClass);
+const totalStudents = classSubmissionsRaw.length;
+const checkedSubmissions = classSubmissionsRaw.filter(r => checkedStudentsMap[r.student_name]);
+const checkedCount = checkedSubmissions.length;
+const atRiskCount = checkedSubmissions.filter(r => (r.score || 0) < 50).length;
+let totalSubjectScore = 0;
+let subjectSubmissionsCount = 0;
+checkedSubmissions.forEach(row => {
+let wrongs = [];
+try {
+wrongs = JSON.parse(row.wrong_answers || '[]');
+} catch(e) {}
+let tookSubject = wrongs.some(item => item.subject === activeDashboardSubject);
+if (tookSubject) {
+totalSubjectScore += (row.score || 0);
+subjectSubmissionsCount++;
+}
+});
+const computedAvgScore = subjectSubmissionsCount > 0 ? (totalSubjectScore / subjectSubmissionsCount).toFixed(1) : "0.0";
+document.getElementById('stat-selected-students').innerText = checkedCount + "명 / " + totalStudents + "명";
+document.getElementById('stat-at-risk-students').innerText = atRiskCount + "명";
+const avgEl = document.getElementById('stat-avg-wrong-rate');
+if (avgEl) {
+avgEl.innerText = computedAvgScore + "점";
+}
+const listContainer = document.getElementById('dash-student-list-container');
+listContainer.innerHTML = '';
+if (classSubmissionsRaw.length === 0) {
+listContainer.innerHTML = '<div class="p-6 text-center text-slate-500 italic text-xs">수집된 ' + activeDashboardClass + ' 학생 제출 데이터가 존재하지 않습니다.</div>';
+} else {
+classSubmissionsRaw.forEach(row => {
+const isChecked = checkedStudentsMap[row.student_name] ? "checked" : "";
+const isAtRisk = (row.score || 0) < 50;
+const statusHtml = isAtRisk ? '<span class="inline-flex items-center gap-1 text-rose-400 font-bold text-[10px] bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> 과락위험</span>' : '<span class="inline-flex items-center gap-1 text-emerald-400 font-bold text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"><i class="fa-solid fa-circle-check"></i> 제출완료</span>';
+const isHighlighted = (selectedDetailStudent === row.student_name) ? "bg-indigo-950/40 border-l-4 border-l-[#5BC0BE]" : "hover:bg-[#1C2541]/30";
+const tpl = document.getElementById('tpl-student-row').content.cloneNode(true);
+const rowDiv = tpl.querySelector('.student-row');
+rowDiv.className += " " + isHighlighted;
+rowDiv.onclick = (e) => {
+if (e.target.type !== 'checkbox') {
+selectStudentRowDetail(row.student_name);
+}
+};
+const chk = tpl.querySelector('.student-checkbox');
+chk.checked = checkedStudentsMap[row.student_name];
+chk.onchange = (e) => toggleIndividualDashboardStudent(row.student_name, e.target.checked);
+tpl.querySelector('.student-name').innerText = cleanStudentName(row.student_name);
+tpl.querySelector('.student-status').innerHTML = statusHtml;
+const scoreSpan = tpl.querySelector('.student-score');
+scoreSpan.innerText = (row.score || 0) + "점";
+if (isAtRisk) {
+scoreSpan.className += " text-rose-400";
+}
+listContainer.appendChild(tpl);
+});
+}
+const detailPanel = document.getElementById('student-detail-panel');
+if (checkedCount === 0) {
+detailPanel.innerHTML = '<div class="text-center py-6 text-slate-500 flex flex-col items-center justify-center gap-2">' +
+'<i class="fa-solid fa-users-slash text-xl opacity-40"></i>' +
+'<p class="text-xs font-semibold">선택된 학생이 없습니다.</p>' +
+'<p class="text-[10px] text-slate-600">명단에서 학생을 한 명 이상 체크해 주세요.</p>' +
+'</div>';
+} else if (checkedCount >= 2) {
+detailPanel.innerHTML = '<div class="text-center py-4 text-indigo-300 flex flex-col items-center justify-center gap-2 animate-fadeIn bg-indigo-950/20 border border-indigo-500/20 rounded-2xl p-4">' +
+'<i class="fa-solid fa-users text-2xl opacity-80 text-indigo-400"></i>' +
+'<h5 class="text-xs font-extrabold">모둠/그룹 공동 분석 활성화됨</h5>' +
+'<p class="text-[10px] text-slate-400 leading-normal max-w-xs">개별 분석 및 문제 워프 기능을 사용하시려면 학생을 <strong>한 명만</strong> 체크해 주세요.</p>' +
+'</div>';
+} else {
+const studentRow = checkedSubmissions[0];
+const singleStudentName = studentRow.student_name;
+let wrongArr = [];
+try {
+wrongArr = JSON.parse(studentRow.wrong_answers || '[]');
+} catch (e) {
+wrongArr = [];
+}
+wrongArr = wrongArr.filter(item => item.qNum !== null);
+const wrongSubjectsSet = new Set();
+wrongArr.forEach(item => {
+if (item.subject) wrongSubjectsSet.add(item.subject);
+});
+const wrongSubjects = Array.from(wrongSubjectsSet);
+const pillContainer = document.createElement('div');
+pillContainer.className = "flex flex-wrap gap-1.5";
+wrongSubjects.forEach(sub => {
+const pTpl = document.getElementById('tpl-subject-pill').content.cloneNode(true);
+const btn = pTpl.querySelector('.subject-pill-btn');
+btn.innerText = sub;
+const isActive = (activeDetailSubject === sub);
+btn.className += " " + (isActive ? "bg-[#5BC0BE] text-slate-950 font-black" : "bg-[#1C2541] text-slate-300 border border-[#3A506B]/50 hover:border-slate-400");
+btn.onclick = () => changeDetailSubjectPillFilter(sub);
+pillContainer.appendChild(pTpl);
+});
+const wrongsForSubject = wrongArr.filter(item => {
+return item.subject === activeDetailSubject;
+});
+const sessionsSet = new Set();
+wrongsForSubject.forEach(item => {
+if (item.year && item.round) {
+sessionsSet.add(item.year + "년|" + item.round);
+}
+});
+const sessionList = Array.from(sessionsSet);
+const sessionContainer = document.createElement('div');
+sessionContainer.className = "flex flex-wrap gap-1 mt-2.5 mb-2.5 pt-2.5 border-t border-[#3A506B]/20";
+sessionList.forEach(sess => {
+const btn = document.createElement('button');
+btn.className = "px-2.5 py-1 rounded-lg text-[9px] font-bold transition";
+const parts = sess.split('|');
+const yrShort = parts[0].slice(-2) + "년 ";
+const rndShort = parts[1].replace(" 정기시험", "");
+btn.innerText = yrShort + rndShort;
+const isActive = (activeDetailSession_2nd === sess);
+btn.className += " " + (isActive ? "bg-indigo-500 text-white font-extrabold" : "bg-[#1C2541] text-slate-400 border border-[#3A506B]/40 hover:border-slate-400");
+btn.onclick = () => {
+activeDetailSession_2nd = sess;
+renderTeacherDashboard();
+};
+sessionContainer.appendChild(btn);
+});
+const filteredWrongs = wrongArr.filter(item => {
+const matchSubject = (item.subject === activeDetailSubject);
+if (!matchSubject) return false;
+if (activeDetailSession_2nd === "전체") return true;
+const sessStr = item.year + "년|" + item.round;
+return (sessStr === activeDetailSession_2nd);
+});
+const gridDiv = document.createElement('div');
+gridDiv.className = "grid grid-cols-6 gap-2 max-h-[115px] overflow-y-auto pr-1 pt-1";
+if (filteredWrongs.length === 0) {
+const emptyDiv = document.createElement('div');
+emptyDiv.className = "col-span-6 text-center py-4 text-[11px] text-emerald-400 font-bold";
+emptyDiv.innerHTML = '<i class="fa-solid fa-circle-check"></i> 오답 0개 (완벽 통과!)';
+gridDiv.appendChild(emptyDiv);
+} else {
+filteredWrongs.forEach(item => {
+const bTpl = document.getElementById('tpl-wrong-badge').content.cloneNode(true);
+const btn = bTpl.querySelector('.wrong-badge-btn');
+bTpl.querySelector('.q-num-text').innerText = "Q" + item.qNum;
+const subText = bTpl.querySelector('.q-subject-text');
+if (subText) subText.classList.add('hidden');
+btn.className = "wrong-badge-btn w-12 h-10 flex items-center justify-center bg-[#0B132B] hover:bg-rose-950/40 border border-rose-500/25 hover:border-rose-400 text-rose-300 rounded-xl text-xs font-black transition";
+btn.onclick = () => warpFromDashboardToQuestion(item.qNum - 1);
+gridDiv.appendChild(bTpl);
+});
+}
+const headerDiv = document.createElement('div');
+headerDiv.className = "flex justify-between items-center border-b border-[#3A506B]/30 pb-2 mb-3";
+const examInfo = activeDetailSession_2nd !== "전체" ? " (" + activeDetailSession_2nd.split('|')[0] + " " + activeDetailSession_2nd.split('|')[1].replace(" 정기시험", "") + ")" : "";
+headerDiv.innerHTML = '<span class="text-xs font-bold text-slate-300 flex items-center">' +
+'<i class="fa-solid fa-user-tag text-[#5BC0BE] mr-1"></i> ' + cleanStudentName(singleStudentName) + ' 학생 오답 진단' + examInfo +
+'</span>' +
+'<span class="text-[9px] text-rose-400 font-extrabold bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">총 ' + wrongArr.length + '문항 틀림</span>';
+const helpText = document.createElement('p');
+helpText.className = "text-[9px] text-slate-500 mb-2";
+helpText.innerText = "* 아래 오답 딱지를 클릭하시면 해당 문항의 채점 해설서로 즉시 워프합니다.";
+detailPanel.innerHTML = '';
+detailPanel.appendChild(headerDiv);
+detailPanel.appendChild(pillContainer);
+detailPanel.appendChild(sessionContainer);
+detailPanel.appendChild(helpText);
+detailPanel.appendChild(gridDiv);
+}
+const classWrongCountsMap = {};
+checkedSubmissions.forEach(studentRow => {
+let wrongs = [];
+try {
+wrongs = JSON.parse(studentRow.wrong_answers || '[]');
+} catch(e) {}
+let tookSubject = wrongs.some(item => item.subject === activeDashboardSubject);
+if (tookSubject) {
+wrongs.forEach(item => {
+if (item.qNum === null) return;
+if (item.subject !== activeDashboardSubject) return;
+const qKey = "Q" + item.qNum;
+classWrongCountsMap[qKey] = (classWrongCountsMap[qKey] || 0) + 1;
+});
+}
+});
+const getConceptTagForQNum = (qNum) => {
+if (questionsList && questionsList[qNum - 1]) {
+return questionsList[qNum - 1].concept_tag || "해상 공학 이론";
+}
+const defaultTags = ["과급기 터빈 휠 열충격", "실린더 라이너 저온부식", "배기가스 서징 압축기", "연료 밸브 적하현상", "캠축 기어 백래시", "베어링 고온 열팽창"];
+return defaultTags[qNum % defaultTags.length];
+};
+const sortedWrongs = Object.entries(classWrongCountsMap).sort((a, b) => b[1] - a[1]);
+const barContainer = document.getElementById('killer-questions-bar-container');
+const conceptTagsContainer = document.getElementById('dash-class-concept-tags');
+if (sortedWrongs.length === 0) {
+barContainer.innerHTML = '<div class="text-center py-10 text-slate-500 italic text-xs flex flex-col items-center justify-center gap-1.5">' +
+'<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>' +
+'<span>현재 선택된 그룹 조건에 해당하는 학급 공통 오답이 존재하지 않습니다.</span>' +
+'</div>';
+conceptTagsContainer.innerHTML = '<span class="px-2.5 py-1 bg-[#1C2541] text-slate-400 rounded-lg text-xs font-bold border border-[#3A506B]/30">#완벽_피드백_완료</span>';
+return;
+}
+const thirdPlaceScore = sortedWrongs[2] ? sortedWrongs[2][1] : 1;
+const matchedTies = sortedWrongs.filter(item => item[1] >= thirdPlaceScore);
+const finalKillerList = matchedTies.slice(0, 6);
+barContainer.innerHTML = '';
+let currentRank = 1;
+let lastCount = -1;
+finalKillerList.forEach((item, idx) => {
+const qKey = item[0];
+const count = item[1];
+const qNum = parseInt(qKey.replace('Q', ''));
+if (lastCount !== -1 && count < lastCount) {
+currentRank = idx + 1;
+}
+lastCount = count;
+const isJoint = (currentRank === 3 && matchedTies.length > 1) || (matchedTies.filter(x => x[1] === count).length > 1);
+const rankText = isJoint ? "공동 " + currentRank + "위" : currentRank + "위";
+const badgeColorClass = currentRank === 1 ? "bg-rose-500 text-white font-extrabold" : (currentRank === 2 ? "bg-amber-500 text-slate-950 font-extrabold" : "bg-[#3A506B] text-slate-100");
+const wrongPercentage = checkedCount > 0 ? Math.round((count / checkedCount) * 100) : 0;
+const concept = getConceptTagForQNum(qNum);
+const bTpl = document.getElementById('tpl-killer-bar').content.cloneNode(true);
+const rankBadge = bTpl.querySelector('.rank-badge');
+rankBadge.innerText = rankText;
+rankBadge.className += " " + badgeColorClass;
+bTpl.querySelector('.q-label').innerText = qKey + " 문항";
+bTpl.querySelector('.concept-label').innerText = "[" + concept + "]";
+bTpl.querySelector('.count-label').innerText = count + "명 (" + wrongPercentage + "%)";
+bTpl.querySelector('.progress-fill').style.width = wrongPercentage + "%";
+barContainer.appendChild(bTpl);
+});
+conceptTagsContainer.innerHTML = '';
+const activeConceptTagsSet = new Set();
+finalKillerList.forEach(item => {
+const qKey = item[0];
+const qNum = parseInt(qKey.replace('Q', ''));
+activeConceptTagsSet.add(getConceptTagForQNum(qNum));
+});
+Array.from(activeConceptTagsSet).forEach(tag => {
+const cTpl = document.getElementById('tpl-concept-card').content.cloneNode(true);
+cTpl.querySelector('.tag-text').innerText = tag.replace(/ /g, '_');
+conceptTagsContainer.appendChild(cTpl);
+});
+}
+async function warpFromDashboardToQuestion(qIndex) {
+const studentRow = dbSubmissionsRaw.find(r => r.student_name === selectedDetailStudent);
+if (!studentRow) {
+alert("해당 학생 정보를 불러올 수 없습니다.");
+return;
+}
+let wrongArr = [];
+try {
+wrongArr = JSON.parse(studentRow.wrong_answers || '[]');
+} catch (e) {
+wrongArr = [];
+}
+wrongArr = wrongArr.filter(item => item.qNum !== null);
+const activeWrongsFiltered = wrongArr.filter(item => {
+const matchSubject = (item.subject === activeDetailSubject);
+if (!matchSubject) return false;
+if (activeDetailSession_2nd === "전체") return true;
+const textStr = item.year + "년|" + item.round;
+return (textStr === activeDetailSession_2nd);
+});
+if (activeWrongsFiltered.length === 0) {
+alert("해당 필터 조건에 부합하는 오답이 없습니다.");
+return;
+}
+showGlobalLoader(true);
+closeTeacherDashboard();
+currentTrack = "CLINIC";
+questionsList = [];
+try {
+let fullQuestionsSet = [];
+if (isOfflineMode) {
+const dummySubjects = ["기관1", "기관2", "기관3", "직무일반", "영어"];
+const tags = ["실린더 라이너 저온부식", "배기가스 서징 압축기", "연료 밸브 적하현상", "캠축 기어 백래시", "베어링 고온 열팽창"];
+dummySubjects.forEach(sub => {
+const isEng = (sub === '영어');
+for (let i = 1; i <= 25; i++) {
+fullQuestionsSet.push({
+id: fullQuestionsSet.length + 1,
+subject: sub,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+question_text: isEng
+? '[' + sub + ' 영어 Q' + i + '] Select the correct English statement representing maritime rules.'
+: '[' + sub + ' 전공 Q' + i + '] 실제 기출문항을 기반으로 재구성한 실무 피드백 카드입니다.',
+option_ga: isEng ? "Imperative option GA" : "가상 기출 보기 ㉮",
+option_na: isEng ? "Recommended statement NA" : "가상 기출 보기 ㉯ (추천 정답)",
+option_sa: isEng ? "Imperative option SA" : "가상 기출 보기 ㉴",
+option_aa: isEng ? "Imperative option AA" : "가상 기출 보기 ㉵",
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: "na",
+concept_tag: tags[i % tags.length] + '_' + sub,
+easy_definition: isEng ? '' : '[' + sub + '] ' + tags[i % tags.length] + '에 입각한 전문 지식 복습 설명입니다.',
+english_translation: isEng ? '[' + sub + '] ' + tags[i % tags.length] + ' professional vocabulary translation and review.' : '',
+explanation: '정답분석: 이 카드는 해상 정비 규정에 따르는 문항이며 ㉯가 올바른 답안지입니다.'
+});
+}
+});
+} else {
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const yrStr = activeDetailSession_2nd !== "전체" ? activeDetailSession_2nd.split('|')[0] : selectedYear;
+const rndStr = activeDetailSession_2nd !== "전체" ? activeDetailSession_2nd.split('|')[1] : selectedRound;
+const { data, error } = await sb.from('questions')
+.select('*')
+.eq('year', parseInt(yrStr))
+.eq('exam_round', rndStr);
+if (error) throw error;
+let filteredSet = data || [];
+if (filteredSet.length > 0 && 'license_class' in filteredSet[0]) {
+filteredSet = filteredSet.filter(q => q.license_class === selectedClass);
+}
+fullQuestionsSet = filteredSet;
+}
+activeWrongsFiltered.forEach(wrongItem => {
+const matchQ = fullQuestionsSet.find(q => q.subject === wrongItem.subject && (q.id % 25 === wrongItem.qNum % 25 || q.question_text.includes("Q" + wrongItem.qNum)));
+if (matchQ) {
+const clonedQ = JSON.parse(JSON.stringify(matchQ));
+clonedQ.student_wrong_val = wrongItem.userVal;
+clonedQ.qNumOriginal = wrongItem.qNum;
+questionsList.push(clonedQ);
+} else {
+const isEng = wrongItem.subject === '영어';
+questionsList.push({
+id: wrongItem.qNum,
+subject: wrongItem.subject,
+year: parseInt(selectedYear),
+exam_round: selectedRound,
+license_class: selectedClass,
+question_text: isEng
+? '[' + wrongItem.subject + ' Q' + wrongItem.qNum + '] Select the correct English statement representing maritime rules.'
+: '[' + wrongItem.subject + ' Q' + wrongItem.qNum + '] 本 전공 자격 검증용 고난도 기출 지문입니다.',
+option_ga: isEng ? "Imperative GA option" : "기출 보기 ㉮입니다.",
+option_na: isEng ? "Recommended NA statement" : "기출 보기 ㉯입니다. (정답)",
+option_sa: isEng ? "Imperative SA option" : "기출 보기 ㉴입니다.",
+option_aa: isEng ? "Imperative AA option" : "기출 보기 ㉵입니다.",
+option_ga_img: "",
+option_na_img: "",
+option_sa_img: "",
+option_aa_img: "",
+correct_answer: "na",
+student_wrong_val: wrongItem.userVal,
+qNumOriginal: wrongItem.qNum,
+concept_tag: wrongItem.subject + " 정밀 이론",
+easy_definition: isEng ? '' : '[' + wrongItem.subject + '] 오답 개념 복습서입니다. 출제의도를 파악하세요.',
+english_translation: isEng ? '[' + wrongItem.subject + '] English translation and parsing of the selected passage.' : '',
+explanation: '정오답 분석: 보기 ㉯가 가장 적절한 실무 관리 수칙입니다.'
+});
+}
+});
+const uniqueQMap = {};
+questionsList.forEach(q => {
+const key = q.subject + "_" + (q.qNumOriginal || q.id);
+uniqueQMap[key] = q;
+});
+questionsList = Object.values(uniqueQMap);
+showGlobalLoader(false);
+document.getElementById('lobby-screen').classList.add('hidden');
+document.getElementById('system-workspace').classList.remove('hidden');
+document.getElementById('header-student-badge').classList.remove('hidden');
+document.getElementById('display-student-id').innerText = "🩺 " + cleanStudentName(selectedDetailStudent) + " 클리닉 중";
+const targetIndex = questionsList.findIndex(q => q.qNumOriginal === qIndex + 1);
+currentNo = targetIndex !== -1 ? targetIndex + 1 : 1;
+showQuestion();
+updateWorkspaceLayout(); // V61
+} catch (err) {
+showGlobalLoader(false);
+alert("클리닉 준비 데이터 전송 도중 에러가 발생했습니다: " + err.message);
+console.error(err);
+}
+}
+async function fetchLMSData() {
+const indicator = document.getElementById('dash-status-indicator');
+if (indicator) {
+indicator.innerHTML = '<i class="fa-solid fa-rotate animate-spin text-amber-400 mr-1 text-xs"></i> 동기화 중...';
+}
+try {
+let rawData = [];
+if (isOfflineMode) {
+rawData = [
+{ id: 101, student_name: "[3급] 301105 김철수", score: 44, track_type: 'A', wrong_answers: '[{"qNum": 3, "subject": "기관1", "year": "2025", "round": "제1회 정기시험", "userVal": "ga"}, {"qNum": 12, "subject": "기관1", "year": "2025", "round": "제1회 정기시험", "userVal": "ga"}, {"qNum": 15, "subject": "기관2", "year": "2025", "round": "제1회 정기시험", "userVal": "sa"}, {"qNum": 22, "subject": "직무일반", "year": "2025", "round": "제1회 정기시험", "userVal": "aa"}]' },
+{ id: 102, student_name: "[3급] 301118 박민수", score: 48, track_type: 'A', wrong_answers: '[{"qNum": 3, "subject": "기관1", "year": "2025", "round": "제1회 정기시험", "userVal": "ga"}, {"qNum": 5, "subject": "기관1", "year": "2025", "round": "제1회 정기시험", "userVal": "sa"}, {"qNum": 15, "subject": "기관2", "year": "2025", "round": "제1회 정기시험", "userVal": "aa"}]' },
+{ id: 103, student_name: "[3급] 301101 홍길동", score: 80, track_type: 'A', wrong_answers: '[{"qNum": 3, "subject": "기관1", "year": "2025", "round": "제1회 정기시험", "userVal": "ga"}, {"qNum": 12, "subject": "기관1", "year": "2025", "round": "제1회 정기시험", "userVal": "sa"}]' },
+{ id: 104, student_name: "[4급] 301122 최태양", score: 72, track_type: 'A', wrong_answers: '[{"qNum": 15, "subject": "기관2", "year": "2025", "round": "제1회 정기시험", "userVal": "ga"}, {"qNum": 22, "subject": "직무일반", "year": "2025", "round": "제1회 정기시험", "userVal": "sa"}]' },
+{ id: 105, student_name: "[4급] 301129 강산아", score: 100, track_type: 'A', wrong_answers: '[{"qNum": null, "subject": "기관1", "isMeta": true, "year": "2025", "round": "제1회 정기시험", "userVal": null}]' }
+];
+} else {
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { data, error } = await sb.from('exam_results').select('*').order('id', { ascending: false }).limit(1000);
+if (error) throw error;
+rawData = data || [];
+}
+const dedupedMap = {};
+rawData.forEach(row => {
+const name = row.student_name ? row.student_name.trim() : "";
+if (name && !dedupedMap[name]) {
+dedupedMap[name] = row;
+}
+});
+dbSubmissionsRaw = Object.values(dedupedMap);
+dbSubmissionsRaw.forEach(row => {
+if (checkedStudentsMap[row.student_name] === undefined) {
+checkedStudentsMap[row.student_name] = true;
+}
+});
+if (indicator) {
+indicator.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1.5 text-xs"></i> 동기화 완료';
+}
+const classSubmissions = dbSubmissionsRaw.filter(row => getSubmissionClass(row) === activeDashboardClass);
+if (classSubmissions.length > 0) {
+selectedDetailStudent = classSubmissions[0].student_name;
+selectStudentRowDetail(selectedDetailStudent);
+} else {
+selectedDetailStudent = null;
+renderTeacherDashboard();
+}
+} catch (err) {
+console.error("Teacher Dashboard fetch failure: ", err);
+if (indicator) {
+indicator.innerHTML = '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs"></i> 에러 발생</span>';
+}
+}
+}
+</script>
+</body>
+</html>
