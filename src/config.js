@@ -5,6 +5,7 @@
 export const config = {
   appName: '해기사 튜터',
   trackTypes: ['A', 'B', 'C'],
+  licenseClasses: ['3급', '4급'],
   supabase: {
     url: import.meta.env.VITE_SUPABASE_URL ?? '',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',

@@ -33,6 +33,8 @@ function createInitialState() {
       year: null,
       examRound: null,
     },
+    // 시험지 선택지 계산용 questions 메타데이터 ([{ subject, year, examRound, count }]). 로비에서 채운다.
+    metadata: { combinations: [] },
     quiz: createInitialQuizState(),
     wrongPool: {
       activeQuestionIds: [],

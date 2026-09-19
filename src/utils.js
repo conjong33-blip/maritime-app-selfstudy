@@ -15,6 +15,38 @@ export function formatAnswerLabel(key) {
 }
 
 // ---------------------------------------------------------------------
+// 정답 키 정규화. questions.correct_answer 는 대부분 'ga'/'na'/'sa'/'aa' 이지만 일부 행(100건)은
+// 원 문자('㉮' '㉯' '㉴' '㉵')로 저장되어 있다. 채점 비교 직전에 이 함수를 거친다 (DB 값은 수정하지 않는다).
+// 'ga'/'na'/'sa'/'aa'(공백, 대소문자 무시)와 원 문자를 ga/na/sa/aa 로 바꾸고, 그 밖의 값은 null.
+// ---------------------------------------------------------------------
+const ANSWER_SYMBOL_TO_KEY = Object.fromEntries(Object.entries(ANSWER_LABELS).map(([key, label]) => [label, key]));
+
+export function normalizeAnswerKey(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  if (Object.hasOwn(ANSWER_SYMBOL_TO_KEY, text)) return ANSWER_SYMBOL_TO_KEY[text];
+  const key = text.toLowerCase();
+  return ANSWER_KEYS.includes(key) ? key : null;
+}
+
+// ---------------------------------------------------------------------
+// 시험지 선택지 계산. fetchQuestionMetadata 의 combinations([{ subject, year, examRound, count }])에서
+// 실제 존재하는 연도/회차만 골라, 현재 선택이 유효하면 유지하고 아니면 기본값을 정한다.
+// 기본값: 가장 최신 연도 -> 그 연도에서 가장 이른 회차. (연도/회차를 코드에 고정하지 않는다.)
+// 반환: { years(최신순), examRounds(선택 연도의 회차, 번호순), year, examRound } (없으면 null)
+// ---------------------------------------------------------------------
+const compareRounds = (a, b) => String(a).localeCompare(String(b), 'ko', { numeric: true });
+
+export function resolveFilterSelection(combinations, current = {}) {
+  const list = Array.isArray(combinations) ? combinations : [];
+  const years = [...new Set(list.map((item) => item.year))].sort((a, b) => b - a);
+  const year = years.includes(current.year) ? current.year : (years[0] ?? null);
+  const examRounds = [...new Set(list.filter((item) => item.year === year).map((item) => item.examRound))].sort(compareRounds);
+  const examRound = examRounds.includes(current.examRound) ? current.examRound : (examRounds[0] ?? null);
+  return { years, examRounds, year, examRound };
+}
+
+// ---------------------------------------------------------------------
 // 이미지 URL 정규화. DB 에 저장된 URL 앞뒤에 공백/줄바꿈이 섞여 있는 경우가 있다.
 // 문자열이 아니거나, 공백뿐이거나, 'NULL'/'null' 문자열이면 이미지 없음('')으로 본다.
 // URL 자체는 DB 값을 그대로 쓴다 (bucket 이름 추론이나 URL 조합을 하지 않는다).
