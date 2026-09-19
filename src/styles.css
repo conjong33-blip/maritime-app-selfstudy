@@ -1,13 +1,32 @@
-/* 최소 기본 스타일. V65 스타일 이전은 다음 단계. */
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght=300;400;600;700;800&display=swap');
 body {
-  margin: 0;
-  min-height: 100vh;
-  background: #0B132B;
-  color: #f1f5f9;
-  font-family: sans-serif;
+font-family: 'Pretendard', sans-serif;
 }
-
-#app {
-  padding: 2rem 1rem;
-  text-align: center;
+/* Custom Scrollbar for sleek UI */
+::-webkit-scrollbar {
+width: 6px;
+height: 6px;
+}
+::-webkit-scrollbar-track {
+background: #1C2541;
+}
+::-webkit-scrollbar-thumb {
+background: #3A506B;
+border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+background: #5BC0BE;
+}
+/* 윗선(Overline) 전용 스타일 클래스 */
+.overline {
+text-decoration: overline;
+}
+/* KaTeX 수식 여백 및 크기 세부 조정 */
+.katex-display {
+margin: 0.5em 0 !important;
+overflow-x: auto;
+overflow-y: hidden;
+}
+.katex {
+font-size: 1.05em !important;
 }

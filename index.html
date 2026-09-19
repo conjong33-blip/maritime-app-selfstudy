@@ -3,12 +3,463 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>해기사 튜터</title>
+<title>해기사 튜터 - AI 기반 학습 플랫폼</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- FontAwesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- KaTeX (수학 공식 렌더링 라이브러리) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 </head>
-<body>
-<!-- V65 화면(로비/워크스페이스)은 이후 단계에서 이 mount 아래로 옮긴다. -->
-<div id="app">
-<h1>해기사 튜터</h1>
+<body class="bg-[#0B132B] text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+<!-- Top Navigation Header -->
+<header class="bg-[#1C2541] border-b border-[#3A506B]/50 px-4 py-2.5 flex justify-between items-center shadow-lg">
+<div class="flex items-center space-x-3">
+<div class="bg-gradient-to-tr from-[#5BC0BE] to-[#3A506B] p-2.5 rounded-xl shadow-md shadow-[#5BC0BE]/20">
+<i class="fa-solid fa-anchor text-white text-xl"></i>
+</div>
+<div>
+<h1 class="text-lg font-extrabold tracking-wide text-white flex items-center gap-2">
+해기사 튜터
+</h1>
+<p class="text-xs text-slate-400">해기사 시험 대비</p>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<!-- Student Info Display (Header) -->
+<div id="header-student-badge" class="hidden bg-[#0B132B]/60 px-4 py-2 rounded-xl border border-[#3A506B] flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+<span id="display-student-id" class="text-xs font-bold text-slate-300"></span>
+<button id="header-logout-btn" data-action="logout-to-lobby" class="text-xs text-rose-400 hover:text-rose-300 transition ml-2">
+<i class="fa-solid fa-sign-out-alt"></i> 로그아웃
+</button>
+</div>
+<!-- Back to Lobby Button in Header -->
+<button id="header-back-to-lobby-btn" data-action="logout-to-lobby" class="hidden bg-[#3A506B]/50 hover:bg-[#3A506B] text-slate-200 hover:text-white px-4 py-2 rounded-xl border border-[#3A506B] text-xs font-semibold transition flex items-center gap-1.5">
+<i class="fa-solid fa-house"></i> 대기실로 돌아가기
+</button>
+</div>
+</header>
+<main id="app" class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6">
+<!-- LOBBY SCREEN (Lobby & Unified Setup View) -->
+<div id="lobby-screen" class="max-w-2xl mx-auto my-4 bg-[#1C2541] rounded-2xl p-5 md:p-8 border border-[#3A506B]/50 shadow-2xl relative overflow-hidden animate-fadeIn">
+<div class="absolute -top-40 -right-40 w-80 h-80 bg-[#5BC0BE]/10 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-40 -left-40 w-80 h-80 bg-[#3A506B]/20 rounded-full blur-3xl"></div>
+<div class="relative z-10">
+<div class="text-right mb-4">
+<span class="text-[#5BC0BE] font-bold text-xs uppercase tracking-widest bg-[#5BC0BE]/10 px-3 py-1 rounded-full border border-[#5BC0BE]/20">Smart LMS Platform</span>
+</div>
+<!-- Debug Connection Error Box -->
+<div id="connection-error-box" class="hidden mb-6 bg-rose-950/40 border border-rose-600/40 text-rose-200 p-4 rounded-2xl text-xs flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<i class="fa-solid fa-circle-exclamation text-rose-400 text-base"></i>
+<span class="font-bold">Supabase 실시간 데이터베이스 통신 에러 발생</span>
+</div>
+<p id="connection-error-message" class="text-slate-400 font-mono pl-6"></p>
+</div>
+<!-- Student ID & Name Entry Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+<div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학번 입력 (6자리)</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
+<i class="fa-solid fa-id-card"></i>
+</span>
+<input type="text" id="student-id-input" maxlength="6" placeholder="예: 301105"
+class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-extrabold tracking-widest text-lg focus:outline-none focus:border-[#5BC0BE] transition">
+</div>
+</div>
+<div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학생 실명 입력</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
+<i class="fa-solid fa-user"></i>
+</span>
+<input type="text" id="student-name-input" placeholder="예: 홍길동"
+class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-bold text-lg focus:outline-none focus:border-[#5BC0BE] transition">
+</div>
+</div>
+</div>
+<!-- Grade Level Class Selection Tab -->
+<div class="mb-6 bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/40">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-2">응시 자격 (급수) 선택</label>
+<div class="grid grid-cols-2 gap-3">
+<button id="btn-class-3" data-action="select-license-class" data-value="3급"
+class="py-3 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-md transition-all duration-200">
+3급 기관사 자격
+</button>
+<button id="btn-class-4" data-action="select-license-class" data-value="4급"
+class="py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200">
+4급 기관사 자격
+</button>
+</div>
+</div>
+<!-- SELF-DIAGNOSIS CARD -->
+<div id="self-diagnosis-card" class="hidden mb-6 bg-indigo-950/40 border border-indigo-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn">
+<div class="flex items-center gap-2 text-indigo-400">
+<i class="fa-solid fa-square-poll-vertical text-lg"></i>
+<span class="font-bold text-sm"> <span id="diag-student-id" class="text-white"></span> 학생 실시간 자가진단 리포트</span>
+</div>
+<div class="text-slate-300 leading-relaxed font-semibold">
+• 정복해야 할 오답 문항: <span id="diag-wrong-status" class="text-rose-400 font-extrabold">0개 남음</span>
+</div>
+<p id="diag-message" class="text-slate-400 italic font-medium"></p>
+</div>
+<!-- INTERACTIVE RESUME SESSION PROMPT CARD -->
+<div id="resume-prompt-card" class="hidden mb-6 bg-emerald-950/40 border border-emerald-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn">
+<div class="flex items-center gap-2 text-emerald-400">
+<i class="fa-solid fa-clock-rotate-left text-lg"></i>
+<span class="font-bold text-sm">중단된 학습 기록 감지!</span>
+</div>
+<p class="text-slate-300 leading-relaxed">
+<span id="resume-student-id" class="hidden"></span>이전에 학습하던 <span id="resume-session-info" class="text-white font-bold text-xs"></span> 데이터가 존재합니다. 이어서 풀어나가시겠습니까?
+</p>
+<div class="flex gap-2.5 mt-1">
+<button data-action="resume-session" class="flex-1 bg-gradient-to-r from-[#5BC0BE] to-teal-600 hover:from-[#5BC0BE] hover:to-[#5BC0BE] text-slate-950 font-black py-2.5 rounded-xl text-xs transition duration-200 shadow-md">
+⚓ 이어서 학습하기
+</button>
+<button data-action="clear-and-start-fresh" class="bg-[#3A506B]/30 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-[#3A506B]/40 hover:border-rose-500/40 px-4 py-2.5 rounded-xl text-xs transition duration-200">
+↺ 아니오
+</button>
+</div>
+</div>
+<!-- Track Selection Section -->
+<div class="space-y-4">
+<label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">학습 트랙 선택</label>
+<div class="grid grid-cols-3 gap-4">
+<!-- Track A -->
+<div id="btn-track-a" data-action="select-track" data-value="A" class="bg-[#1C2541] border-2 border-[#3A506B]/50 hover:border-[#5BC0BE]/60 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full">
+<div class="bg-[#5BC0BE]/10 text-[#5BC0BE] p-3 rounded-xl border border-[#5BC0BE]/20 mb-2">
+<i class="fa-solid fa-graduation-cap text-xl"></i>
+</div>
+<div>
+<h4 class="text-xs lg:text-sm font-bold text-white">모의고사</h4>
+</div>
+</div>
+<!-- Track B -->
+<div id="btn-track-b" data-action="select-track" data-value="B" class="bg-[#1C2541] border-2 border-[#3A506B]/50 hover:border-emerald-500/60 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full">
+<div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-xl border border-emerald-500/20 mb-2">
+<i class="fa-solid fa-book-open-reader text-xl"></i>
+</div>
+<div>
+<h4 class="text-xs lg:text-sm font-bold text-white">과목선택</h4>
+</div>
+</div>
+<!-- Track C -->
+<div id="btn-track-c" data-action="select-track" data-value="C" class="bg-[#1C2541] border-2 border-[#3A506B]/50 hover:border-rose-500/60 p-4 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center justify-between shadow-md hover:shadow-lg h-full opacity-40 pointer-events-none">
+<div class="bg-rose-500/10 text-rose-400 p-3 rounded-xl border border-rose-500/20 mb-2">
+<i class="fa-solid fa-fire-alt text-xl"></i>
+</div>
+<div>
+<h4 class="text-xs lg:text-sm font-bold text-white">오답소탕</h4>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters Container -->
+<div id="filters-container" class="hidden mt-8 border-t border-[#3A506B]/40 pt-6 space-y-6 animate-fadeIn">
+<div class="flex items-center space-x-2">
+<span id="active-track-badge" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400"></span>
+<span class="text-xs text-slate-400 font-medium">세부 학습 필터를 선택해 주세요.</span>
+</div>
+<!-- Track A Options -->
+<div id="track-a-options" class="hidden space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-2">년도 선택</label>
+<select id="year-select-a" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#5BC0BE] transition">
+<option value="2026" selected>2026년</option>
+<option value="2025">2025년</option>
+<option value="2024">2024년</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-2">시험 회차</label>
+<select id="round-select-a" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#5BC0BE] transition">
+<option value="제1회 정기시험" selected>제1회 정기시험</option>
+<option value="제2회 정기시험">제2회 정기시험</option>
+<option value="제3회 정기시험">제3회 정기시험</option>
+<option value="제4회 정기시험">제4회 정기시험</option>
+</select>
+</div>
+</div>
+<!-- Subject Selection -->
+<div class="bg-[#0B132B]/60 p-4 rounded-2xl border border-[#3A506B]/30 space-y-2">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider">과목 선택 (중복 체크 가능 / 부분합격 대비)</label>
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="기관1" checked class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>기관1</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="기관2" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>기관2</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="기관3" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>기관3</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="직무일반" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>직무일반</span>
+</label>
+<label class="flex items-center space-x-2 text-xs font-bold text-slate-300 cursor-pointer hover:text-white transition">
+<input type="checkbox" name="subject-select-a-group" value="영어" class="accent-[#5BC0BE] w-4 h-4 rounded">
+<span>영어</span>
+</label>
+</div>
+<p class="text-[10px] text-slate-500 leading-normal mt-1">* 2개 과목 이상 체크 시, 과목별 25문제가 누적되어 시험이 동적 병합 출제됩니다.</p>
+</div>
+</div>
+<!-- Track B Options -->
+<div id="track-b-options" class="hidden space-y-4">
+<label class="block text-xs font-bold text-slate-400 mb-2">과목 선택</label>
+<div class="grid grid-cols-5 gap-2.5">
+<button data-action="select-subject-b" data-value="기관1" id="btn-sub-기관1" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">기관1</button>
+<button data-action="select-subject-b" data-value="기관2" id="btn-sub-기관2" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">기관2</button>
+<button data-action="select-subject-b" data-value="기관3" id="btn-sub-기관3" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">기관3</button>
+<button data-action="select-subject-b" data-value="직무일반" id="btn-sub-직무일반" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">직무일반</button>
+<button data-action="select-subject-b" data-value="영어" id="btn-sub-영어" class="subject-card bg-[#0B132B] border border-[#3A506B] hover:border-emerald-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200">영어</button>
+</div>
+<div id="track-b-dropdowns" class="hidden grid grid-cols-2 gap-4 mt-4 p-4 bg-[#0B132B]/50 rounded-2xl border border-[#3A506B]/30 animate-fadeIn">
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-1.5">년도</label>
+<select id="year-select-b" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+<option value="2026" selected>2026년</option>
+<option value="2025">2025년</option>
+<option value="2024">2024년</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-400 mb-1.5">시험 회차</label>
+<select id="round-select-b" class="w-full bg-[#0B132B] border border-[#3A506B] rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+<option value="제1회 정기시험" selected>제1회 정기시험</option>
+<option value="제2회 정기시험">제2회 정기시험</option>
+<option value="제3회 정기시험">제3회 정기시험</option>
+<option value="제4회 정기시험">제4회 정기시험</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Start Exam Button -->
+<button id="start-exam-btn" data-action="start-selected-exam"
+class="w-full bg-gradient-to-r from-[#5BC0BE] to-[#3A506B] hover:from-[#5BC0BE] hover:to-[#5BC0BE] text-white py-4 rounded-xl font-bold tracking-widest text-sm shadow-lg shadow-[#5BC0BE]/10 hover:shadow-[#5BC0BE]/20 transform active:scale-[0.98] transition flex items-center justify-center gap-2">
+<i class="fa-solid fa-circle-play text-base"></i> 기출문제 로드 및 시험 시작 ⚓
+</button>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- SYSTEM WORKSPACE (Wide 2-Column Split View) -->
+<!-- ========================================== -->
+<div id="system-workspace" class="hidden grid grid-cols-12 gap-6 animate-fadeIn">
+<!-- Left Panel: Questions and Choices (Col-span 8 or 12 depending on layout mode V61) -->
+<section id="workspace-left-panel" class="col-span-12 lg:col-span-8 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto">
+<div>
+<!-- Header Badges inside quiz -->
+<div class="flex justify-between items-center border-b border-[#3A506B]/40 pb-4 mb-5">
+<div class="flex items-center space-x-2">
+<span id="current-track-tag" class="hidden"></span>
+<span id="subject-title" class="font-bold text-sm text-[#5BC0BE]"></span>
+</div>
+<div class="flex items-center space-x-3">
+<div class="bg-[#0B132B] px-3.5 py-1.5 rounded-full border border-[#3A506B]/60 text-xs font-extrabold text-slate-300">
+문제 <span id="current-num-badge" class="text-[#5BC0BE]">1</span> / <span id="total-num-badge">25</span>
+</div>
+</div>
+</div>
+<!-- Image Section -->
+<div id="image-container" class="hidden mb-6 bg-[#0B132B]/60 p-4 rounded-2xl border border-[#3A506B]/30 flex flex-col items-center">
+<img id="question-image" src="" alt="문제 이미지" class="max-h-72 object-contain rounded-xl shadow-md border border-[#3A506B]/20">
+</div>
+<!-- Question Text Section -->
+<div class="bg-[#0B132B]/50 p-5 rounded-2xl border border-[#3A506B]/30 mb-6 relative">
+<div id="question-text" class="text-white text-base md:text-lg font-bold leading-relaxed">문제를 불러오는 중입니다...</div>
+</div>
+<!-- Answer Options Section -->
+<div class="space-y-3.5 mb-6">
+<button data-action="mark-answer" data-value="ga" id="opt-ga" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉮</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-ga" class="text-sm font-semibold"></span>
+<div id="img-container-ga" class="hidden">
+<img id="img-ga" src="" alt="보기 ㉮ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+<button data-action="mark-answer" data-value="na" id="opt-na" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉯</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-na" class="text-sm font-semibold"></span>
+<div id="img-container-na" class="hidden">
+<img id="img-na" src="" alt="보기 ㉯ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+<button data-action="mark-answer" data-value="sa" id="opt-sa" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉴</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-sa" class="text-sm font-semibold"></span>
+<div id="img-container-sa" class="hidden">
+<img id="img-sa" src="" alt="보기 ㉴ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+<button data-action="mark-answer" data-value="aa" id="opt-aa" class="option-btn w-full text-left bg-[#0B132B] hover:bg-[#0B132B]/80 border-2 border-[#3A506B]/40 hover:border-[#5BC0BE]/50 p-4 rounded-2xl text-slate-200 transition-all duration-200 flex items-center space-x-3 group">
+<span class="w-8 h-8 rounded-full bg-[#1C2541] border border-[#3A506B] group-hover:bg-[#5BC0BE]/10 group-hover:border-[#5BC0BE] flex items-center justify-center font-bold text-xs text-[#5BC0BE] transition">㉵</span>
+<div class="flex-1 flex flex-col gap-2">
+<span id="text-aa" class="text-sm font-semibold"></span>
+<div id="img-container-aa" class="hidden">
+<img id="img-aa" src="" alt="보기 ㉵ 이미지" class="max-h-24 object-contain rounded-lg border border-[#3A506B]/30 bg-[#0B132B]/60 p-1">
+</div>
+</div>
+</button>
+</div>
+</div>
+<!-- Footer Navigation Buttons -->
+<div class="flex items-center justify-between border-t border-[#3A506B]/40 pt-4 gap-4 mt-6">
+<div class="flex items-center space-x-3">
+<button data-action="prev-question" id="btn-prev" class="bg-[#3A506B]/40 hover:bg-[#3A506B] text-slate-300 hover:text-white px-5 py-3 rounded-xl border border-[#3A506B] text-xs font-bold transition flex items-center gap-2">
+<i class="fa-solid fa-arrow-left"></i> 이전 문제
+</button>
+<button data-action="next-question" id="btn-next" class="bg-[#5BC0BE] hover:bg-[#5BC0BE]/80 text-slate-900 px-6 py-3 rounded-xl text-xs font-black tracking-wider transition flex items-center gap-2">
+다음 문제 <i class="fa-solid fa-arrow-right"></i>
+</button>
+</div>
+<div class="flex items-center space-x-3">
+<button data-action="check-track-b-answer" id="btn-grade-b" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black tracking-widest transition">
+정답확인
+</button>
+<button data-action="submit-track-a-exam" id="btn-submit-a" class="hidden bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-3 rounded-xl text-xs font-black tracking-widest transition shadow-lg shadow-indigo-500/10 flex items-center gap-2">
+<i class="fa-solid fa-paper-plane"></i> 최종 시험 제출 ⚓
+</button>
+</div>
+</div>
+</section>
+<!-- Right Panel: Explanations and Final Score (Col-span 4 or Hidden based on V61 Layout engine) -->
+<section id="workspace-right-panel" class="col-span-12 lg:col-span-4 bg-[#1C2541] rounded-3xl p-6 border border-[#3A506B]/50 shadow-xl flex flex-col justify-between lg:h-[calc(100vh-140px)] lg:overflow-y-auto">
+<div>
+<h3 id="ai-explanation-header-title" class="text-sm font-extrabold text-slate-300 border-b border-[#3A506B]/40 pb-3 mb-4 flex items-center gap-2">
+<i class="fa-solid fa-graduation-cap text-[#5BC0BE]"></i> AI 실시간 스마트 해설서
+</h3>
+<!-- Return Button Container (Visible only in Track A Warp mode) -->
+<div id="warp-return-container" class="hidden mb-4">
+<button data-action="return-to-summary-list" class="w-full bg-[#3A506B] hover:bg-[#5BC0BE] hover:text-slate-950 text-slate-200 py-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-md">
+<i class="fa-solid fa-rotate-left"></i> 📋 오답 진단 리스트로 복귀
+</button>
+</div>
+<!-- View 1: Track A Exam Ongoing Placeholder -->
+<div id="tutor-placeholder-a" class="py-12 px-6 text-center bg-[#0B132B]/60 border border-[#3A506B]/30 rounded-2xl flex flex-col items-center justify-center space-y-4 animate-pulse">
+<div class="w-14 h-14 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 text-2xl">
+<i class="fa-solid fa-anchor"></i>
+</div>
+<h4 class="text-xs font-extrabold text-slate-300">실전 모의고사 모드 작동 중</h4>
+<p class="text-[11px] text-slate-500 leading-relaxed max-w-xs">보기를 클릭해도 해설서가 나타나지 않습니다. 전체 문항을 진중하게 풀이하고 마지막에 [최종 시험 제출]을 완료하면, 자동 채점과 함께 오답 항목별 정밀 해설서가 한꺼번에 소환됩니다.</p>
+</div>
+<!-- View 1.5: Track B Not Graded Placeholder (V61 추가 반영) -->
+<div id="tutor-placeholder-b" class="hidden py-12 px-6 text-center bg-[#0B132B]/60 border border-[#3A506B]/30 rounded-2xl flex flex-col items-center justify-center space-y-4 animate-fadeIn">
+<div class="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 text-2xl">
+<i class="fa-solid fa-circle-question animate-pulse"></i>
+</div>
+<h4 class="text-xs font-extrabold text-slate-300">과목별 자율학습 진행 중</h4>
+<p class="text-[11px] text-slate-500 leading-relaxed max-w-xs">보기를 체크하고 하단의 <span class="text-emerald-400 font-bold">[정답확인]</span> 버튼을 누르시면 해당 기출문항의 맞춤형 오답 클리닉과 실시간 3단계 해설서가 즉시 활성화됩니다! ⚓</p>
+</div>
+<!-- View 2: Active Explanations (DB / AI Generation Block) -->
+<div id="active-explanation-block" class="hidden space-y-4">
+<!-- Grade Badge Card -->
+<div id="grade-badge-card" class="p-4 rounded-xl flex items-center space-x-3">
+<!-- JS Inject Badge design -->
+</div>
+<!-- 1. 핵심 용어 블록 -->
+<div class="bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/50 space-y-2 shadow-inner">
+<div class="flex items-center space-x-2 text-[#5BC0BE] text-xs font-bold">
+<i class="fa-solid fa-tags"></i>
+<span>핵심 용어</span>
+</div>
+<div id="premium-tag" class="text-sm text-white font-extrabold leading-relaxed"></div>
+</div>
+<!-- 2. 쉬운 개념 정의 블록 -->
+<div id="dynamic-middle-block" class="bg-[#0B132B]/80 p-5 rounded-2xl border border-[#3A506B]/40 space-y-2">
+<div class="flex items-center space-x-2 text-teal-400 text-xs font-bold">
+<i class="fa-solid fa-book-open" id="dynamic-middle-icon"></i>
+<span id="dynamic-middle-title">쉬운 개념 정의</span>
+</div>
+<div id="premium-concept" class="text-sm text-slate-300 font-semibold leading-relaxed"></div>
+</div>
+<!-- 3. 정답 및 보기 원리 분석 블록 -->
+<div class="bg-[#0B132B]/60 p-5 rounded-2xl border border-[#3A506B]/30 space-y-2">
+<div class="flex items-center space-x-2 text-indigo-400 text-xs font-bold">
+<i class="fa-solid fa-lightbulb"></i>
+<span>정답 및 보기 원리 분석</span>
+</div>
+<div id="premium-explanation" class="text-sm text-slate-300 font-semibold leading-relaxed space-y-2 whitespace-pre-line text-xs"></div>
+</div>
+<!-- Real-time Gemini Assist Block -->
+<div id="gemini-live-assist" class="hidden bg-indigo-950/20 border border-indigo-500/20 p-4 rounded-2xl space-y-2">
+<span class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">AI Live Tutor</span>
+<p id="gemini-ai-message" class="text-sm text-slate-300 leading-relaxed"></p>
+</div>
+</div>
+<!-- View 3: Track A Grading & Interactive Wrong Answers Summary -->
+<div id="exam-summary-block" class="hidden space-y-4">
+<div class="bg-gradient-to-tr from-indigo-900/30 to-slate-900/40 border border-indigo-500/30 py-3 px-4 rounded-2xl text-center space-y-1">
+<h4 class="text-xs font-extrabold text-[#5BC0BE]">실전 모의고사 채점 결과</h4>
+<div class="text-2xl font-black text-white">
+<span id="summary-score" class="text-rose-400">0</span> / 100점
+</div>
+<p class="text-[11px] text-slate-400 leading-relaxed"><span class="text-amber-400 font-bold">오답 항목을 클릭하시면 해당 문제를 복습하실 수 있습니다.</span></p>
+</div>
+<div class="space-y-2.5">
+<div class="text-xs font-bold text-slate-400 flex items-center justify-between">
+<span>오답 진단 리스트</span>
+<span id="wrong-count" class="text-rose-400"></span>
+</div>
+<div id="wrong-warp-list" class="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+<!-- JS inserts interactive anchor buttons here -->
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer Copyright -->
+<footer class="bg-[#1C2541]/40 border-t border-[#3A506B]/30 px-6 py-4 mt-8">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-2">
+<p></p>
+<p>본 시스템은 부산해사고 48기 학습자료로만 활용되니 무단배포를 금지합니다.</p>
+</div>
+</footer>
+<!-- ======================================================== -->
+<!-- HTML 정적 템플릿 정의 구역 (Safe Customizing Area) -->
+<!-- ======================================================== -->
+<div id="template-registry-container" class="hidden" aria-hidden="true">
+<!-- Correct Grade Badge Card -->
+<template id="tpl-badge-correct">
+<div class="flex items-center space-x-3 w-full">
+<div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 text-lg">
+<i class="fa-solid fa-circle-check"></i>
+</div>
+<div>
+<h4 class="correct-title-label text-xs font-black text-emerald-400">정답입니다! 완벽한 해상공학적 판단입니다.</h4>
+<p class="correct-subtitle-label text-[10px] text-slate-400 mt-0.5"></p>
+</div>
+</div>
+</template>
+<!-- Incorrect Grade Badge Card -->
+<template id="tpl-badge-incorrect">
+<div class="flex items-center space-x-3 w-full">
+<div class="w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30 text-lg">
+<i class="fa-solid fa-circle-xmark"></i>
+</div>
+<div>
+<h4 class="incorrect-title-label text-xs font-black text-rose-400">오답입니다. 전공 오개념을 보완하세요!</h4>
+<p class="incorrect-subtitle-label text-[10px] text-slate-400 mt-0.5"></p>
+</div>
+</div>
+</template>
 </div>
 <script type="module" src="/src/main.js"></script>
 </body>
