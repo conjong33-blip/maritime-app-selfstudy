@@ -46,6 +46,72 @@ export function resolveFilterSelection(combinations, current = {}) {
   return { years, examRounds, year, examRound };
 }
 
+// 선택한 과목이 모두 실제로 있는 연도/회차만 남긴다 (Track A 모의고사용).
+// combinations: [{ subject, year, examRound, count }], subjects: 선택한 과목 목록.
+// 반환: [{ year, examRound }] (resolveFilterSelection 에 그대로 넣을 수 있다). 과목이 없으면 빈 배열.
+export function commonCombinations(combinations, subjects) {
+  const wanted = [...new Set(Array.isArray(subjects) ? subjects : [])];
+  if (wanted.length === 0 || !Array.isArray(combinations)) return [];
+  const bySheet = new Map();
+  for (const item of combinations) {
+    const key = JSON.stringify([item.year, item.examRound]);
+    if (!bySheet.has(key)) bySheet.set(key, new Set());
+    bySheet.get(key).add(item.subject);
+  }
+  const result = [];
+  for (const [key, present] of bySheet) {
+    if (wanted.every((subject) => present.has(subject))) {
+      const [year, examRound] = JSON.parse(key);
+      result.push({ year, examRound });
+    }
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------
+// Track A 채점 (순수 함수). 선택/정답 모두 normalizeAnswerKey 를 거친다.
+//  - correct: 선택 === 정답, incorrect: 선택했지만 다름, unanswered: 선택 없음(점수에서는 오답과 같이 맞힌 수에 안 들어감)
+//  - invalid: 정답 데이터를 알 수 없는 문항. 정답/오답 어느 쪽으로도 판정하지 않는다.
+// 점수는 V65 와 같이 Math.round(맞힌 수 / 전체 문항 수 * 100). 과목별 문항 수는 실제 문제 목록에서 센다.
+// ---------------------------------------------------------------------
+export function gradeTrackA(questions, markedAnswers) {
+  const items = [];
+  const subjects = new Map(); // 처음 나온 순서 유지
+  questions.forEach((question, index) => {
+    const selectedKey = normalizeAnswerKey(markedAnswers[question.id]);
+    const correctKey = normalizeAnswerKey(question.correct_answer);
+    let result;
+    if (!correctKey) result = 'invalid';
+    else if (!selectedKey) result = 'unanswered';
+    else result = selectedKey === correctKey ? 'correct' : 'incorrect';
+    items.push({ questionId: question.id, index, subject: question.subject, selectedKey, correctKey, result });
+
+    if (!subjects.has(question.subject)) {
+      subjects.set(question.subject, { subject: question.subject, total: 0, correct: 0, incorrect: 0, unanswered: 0, invalid: 0 });
+    }
+    const row = subjects.get(question.subject);
+    row.total += 1;
+    row[result] += 1;
+  });
+
+  const count = (result) => items.filter((item) => item.result === result).length;
+  const total = questions.length;
+  const correctCount = count('correct');
+  return {
+    total,
+    correctCount,
+    incorrectCount: count('incorrect'),
+    unansweredCount: count('unanswered'),
+    invalidCount: count('invalid'),
+    score: total === 0 ? 0 : Math.round((correctCount / total) * 100),
+    bySubject: [...subjects.values()].map((row) => ({
+      ...row,
+      score: row.total === 0 ? 0 : Math.round((row.correct / row.total) * 100),
+    })),
+    items,
+  };
+}
+
 // ---------------------------------------------------------------------
 // 이미지 URL 정규화. DB 에 저장된 URL 앞뒤에 공백/줄바꿈이 섞여 있는 경우가 있다.
 // 문자열이 아니거나, 공백뿐이거나, 'NULL'/'null' 문자열이면 이미지 없음('')으로 본다.

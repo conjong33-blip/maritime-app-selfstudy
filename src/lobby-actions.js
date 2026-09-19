@@ -1,11 +1,12 @@
 // 로비 선택 화면: 급수, 트랙(A/B), Track B 과목, 연도/회차 선택.
 // 선택 값의 기준은 state (licenseClass, currentTrack, filters) 이고 DOM 은 state 를 보여 주기만 한다.
 // 연도/회차 선택지는 questions 실제 데이터(fetchQuestionMetadata)로 채운다. 문제 로드, 채점, 저장은 하지 않는다.
+// Track A 는 과목을 여러 개 체크할 수 있고(state.filters.subjects 가 기준), 연도/회차는 체크한 과목이 모두 있는 시험지만 고른다.
 // Track C 는 이 단계에서 연결하지 않는다 (카드의 초기 비활성 상태를 그대로 둔다).
 import { config } from './config.js';
 import { state, setCurrentTrack } from './state.js';
 import { fetchQuestionMetadata } from './data/questions.js';
-import { resolveFilterSelection } from './utils.js';
+import { commonCombinations, resolveFilterSelection } from './utils.js';
 import { hideConnectionError, showConnectionError } from './view.js';
 
 // V65 와 같은 클래스 문자열
@@ -49,6 +50,8 @@ const DIMMED_CARD = ' opacity-60 border-[#3A506B]/20';
 const LOADING_TEXT = '불러오는 중…';
 const EMPTY_TEXT = '등록된 시험 없음';
 const FAILED_TEXT = '불러오기 실패';
+const NO_SUBJECT_TEXT = '과목을 선택하세요';
+const NO_COMMON_TEXT = '공통 시험 없음';
 
 const byId = (id) => document.getElementById(id);
 
@@ -84,6 +87,19 @@ function renderSubjectB() {
   }
 }
 
+// Track A 과목 체크박스 표시. state.filters.subjects 를 그대로 보여 준다 (DOM 이 기준이 아니다).
+function renderSubjectsA() {
+  for (const input of document.querySelectorAll('input[name="subject-select-a-group"]')) {
+    input.checked = state.filters.subjects.includes(input.value);
+  }
+}
+
+// 지금 트랙에서 연도/회차 선택지를 만드는 데 쓰는 조합. Track A 는 체크한 과목이 모두 있는 시험지만 남긴다.
+function activeCombinations() {
+  if (state.currentTrack === 'A') return commonCombinations(state.metadata.combinations, state.filters.subjects);
+  return state.metadata.combinations;
+}
+
 function activeSelects() {
   const def = TRACKS[state.currentTrack];
   return def ? { year: byId(def.yearSelectId), round: byId(def.roundSelectId) } : null;
@@ -105,8 +121,9 @@ function renderFilterSelects(selection) {
   const selects = activeSelects();
   if (!selects) return;
   if (selection.years.length === 0) {
-    setSelectMessage(selects.year, EMPTY_TEXT);
-    setSelectMessage(selects.round, EMPTY_TEXT);
+    const text = state.currentTrack === 'A' ? (state.filters.subjects.length === 0 ? NO_SUBJECT_TEXT : NO_COMMON_TEXT) : EMPTY_TEXT;
+    setSelectMessage(selects.year, text);
+    setSelectMessage(selects.round, text);
     return;
   }
   fillSelect(selects.year, selection.years.map((year) => ({ value: String(year), label: `${year}년` })), String(selection.year));
@@ -141,7 +158,7 @@ function metadataScope() {
 }
 
 function applyFilterSelection() {
-  const selection = resolveFilterSelection(state.metadata.combinations, {
+  const selection = resolveFilterSelection(activeCombinations(), {
     year: state.filters.year,
     examRound: state.filters.examRound,
   });
@@ -190,7 +207,10 @@ export function selectLicenseClass(value) {
 export function selectTrack(value) {
   if (!Object.hasOwn(TRACKS, value)) return;
   setCurrentTrack(value);
+  // V65 처럼 처음 Track A 에 들어가면 기관1 이 체크된 상태로 시작한다 (state 가 기준이고 체크박스는 그것을 보여 준다).
+  if (value === 'A' && state.filters.subjects.length === 0) state.filters.subjects = [config.trackASubjects[0]];
   renderTracks();
+  renderSubjectsA();
   renderSubjectB();
   return refreshFilterOptions();
 }
@@ -202,11 +222,22 @@ export function selectSubjectB(value) {
   return refreshFilterOptions();
 }
 
+// Track A 과목 체크/해제. checked 는 사용자가 방금 바꾼 체크 상태이고, 이후 표시는 state 로 다시 그린다.
+export function toggleSubjectA(value, checked) {
+  if (state.currentTrack !== 'A' || !config.trackASubjects.includes(value)) return;
+  const selected = new Set(state.filters.subjects);
+  if (checked) selected.add(value);
+  else selected.delete(value);
+  state.filters.subjects = config.trackASubjects.filter((subject) => selected.has(subject));
+  renderSubjectsA();
+  return refreshFilterOptions();
+}
+
 // 연도를 바꾸면 그 연도에 실제 있는 회차로 회차 선택지를 다시 만든다.
 export function changeYear(value) {
   const year = Number(value);
   if (!Number.isInteger(year)) return;
-  const selection = resolveFilterSelection(state.metadata.combinations, { year, examRound: state.filters.examRound });
+  const selection = resolveFilterSelection(activeCombinations(), { year, examRound: state.filters.examRound });
   if (selection.year !== year) return;
   state.filters.year = selection.year;
   state.filters.examRound = selection.examRound;
@@ -214,7 +245,7 @@ export function changeYear(value) {
 }
 
 export function changeExamRound(value) {
-  const selection = resolveFilterSelection(state.metadata.combinations, {
+  const selection = resolveFilterSelection(activeCombinations(), {
     year: state.filters.year,
     examRound: value,
   });

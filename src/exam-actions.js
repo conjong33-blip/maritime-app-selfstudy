@@ -1,5 +1,5 @@
-// Track B 시험 시작과 로비 복귀. 학번+이름으로 selfstudy 프로필을 확보한 뒤 문제를 읽어 state.quiz 에 넣고
-// 문제 풀이 화면으로 전환한다. 채점은 track-b-actions.js 에서 한다. 세션 저장/복원은 아직 하지 않는다.
+// Track A/B 시험 시작과 로비 복귀. 학번+이름으로 selfstudy 프로필을 확보한 뒤 문제를 읽어 state.quiz 에 넣고
+// 문제 풀이 화면으로 전환한다. 채점은 track-b-actions.js / track-a-actions.js 에서 한다. 세션 저장/복원은 아직 하지 않는다.
 import { config } from './config.js';
 import { state, resetQuizState } from './state.js';
 import { fetchQuestions } from './data/questions.js';
@@ -39,17 +39,26 @@ function checkStartConditions() {
   }
 
   if (state.currentTrack === null) return { message: '학습 트랙을 먼저 선택해 주세요.' };
-  if (state.currentTrack !== 'B') return { message: '과목 선택(Track B)만 시작할 수 있습니다.' };
-  if (!state.filters.subject) return { message: '공부하실 과목 카드를 먼저 한 개 선택해 주세요.' };
+  if (state.currentTrack !== 'A' && state.currentTrack !== 'B') {
+    return { message: '모의고사(Track A) 또는 과목 선택(Track B)만 시작할 수 있습니다.' };
+  }
+  if (state.currentTrack === 'B' && !state.filters.subject) {
+    return { message: '공부하실 과목 카드를 먼저 한 개 선택해 주세요.' };
+  }
+  if (state.currentTrack === 'A' && state.filters.subjects.length === 0) {
+    return { message: '응시할 과목을 한 개 이상 체크해 주세요.' };
+  }
   if (state.filters.year === null || state.filters.examRound === null) {
-    return { message: '연도와 시험 회차를 선택해 주세요.' };
+    return { message: state.currentTrack === 'A' ? '선택한 과목이 모두 있는 시험이 없습니다. 과목 선택을 바꿔 주세요.' : '연도와 시험 회차를 선택해 주세요.' };
   }
   return {
     snapshot: {
       studentNo,
       studentName,
+      track: state.currentTrack,
       licenseClass: state.licenseClass,
-      subject: state.filters.subject,
+      subject: state.currentTrack === 'B' ? state.filters.subject : null,
+      subjects: state.currentTrack === 'A' ? [...state.filters.subjects] : [],
       year: state.filters.year,
       examRound: state.filters.examRound,
     },
@@ -60,14 +69,31 @@ function checkStartConditions() {
 function isSameSnapshot(snapshot) {
   return (
     state.view === 'lobby' &&
-    state.currentTrack === 'B' &&
+    state.currentTrack === snapshot.track &&
     readStudentNo() === snapshot.studentNo &&
     readStudentName() === snapshot.studentName &&
     state.licenseClass === snapshot.licenseClass &&
-    state.filters.subject === snapshot.subject &&
+    (snapshot.track === 'A'
+      ? state.filters.subjects.join('|') === snapshot.subjects.join('|')
+      : state.filters.subject === snapshot.subject) &&
     state.filters.year === snapshot.year &&
     state.filters.examRound === snapshot.examRound
   );
+}
+
+// 학번+이름으로 프로필을 확보해 state.profile 에 넣는다 (Track A/B 공통).
+async function ensureProfile(snapshot) {
+  const profile = await getOrCreateProfile({ studentNo: snapshot.studentNo, studentName: snapshot.studentName });
+  return { profileKey: profile.profileKey, studentNo: profile.studentNo, studentName: profile.studentName };
+}
+
+// Track A 문제는 체크박스 순서(과목별로 묶음) -> 문항 번호 순서로 정렬한다.
+function orderTrackARows(rows) {
+  const order = (subject) => config.trackASubjects.indexOf(subject);
+  return rows
+    .map((row, position) => ({ row, position }))
+    .sort((a, b) => order(a.row.subject) - order(b.row.subject) || a.position - b.position)
+    .map(({ row }) => row);
 }
 
 export async function startSelectedExam() {
@@ -86,14 +112,15 @@ export async function startSelectedExam() {
   setStartLoading(true);
   try {
     // 1) 프로필 (실패하면 문제를 불러오지 않는다)
-    const profile = await getOrCreateProfile({ studentNo: snapshot.studentNo, studentName: snapshot.studentName });
+    const profile = await ensureProfile(snapshot);
     if (requestId !== startRequestId || !isSameSnapshot(snapshot)) return;
-    state.profile = { profileKey: profile.profileKey, studentNo: profile.studentNo, studentName: profile.studentName };
+    state.profile = profile;
 
     // 2) 문제
-    const rows = await fetchQuestions({
+    const isTrackA = snapshot.track === 'A';
+    let rows = await fetchQuestions({
       licenseClass: snapshot.licenseClass,
-      subject: snapshot.subject,
+      ...(isTrackA ? { subjects: snapshot.subjects } : { subject: snapshot.subject }),
       year: snapshot.year,
       examRound: snapshot.examRound,
     });
@@ -102,6 +129,16 @@ export async function startSelectedExam() {
     if (rows.length === 0) {
       showStartMessage('선택하신 시험지에 등록된 문제가 없습니다.');
       return;
+    }
+    if (isTrackA) {
+      // 선택한 과목이 하나라도 빠져 있으면 일부 과목만으로 시험을 시작하지 않는다.
+      const present = new Set(rows.map((row) => row.subject));
+      const missing = snapshot.subjects.filter((subject) => !present.has(subject));
+      if (missing.length > 0) {
+        showStartMessage(`선택하신 시험지에 ${missing.join(', ')} 문제가 없어 시작할 수 없습니다.`);
+        return;
+      }
+      rows = orderTrackARows(rows);
     }
 
     resetQuizState();

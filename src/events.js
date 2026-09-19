@@ -1,13 +1,22 @@
 // 이벤트 위임. index.html 의 [data-action] 요소 클릭을 document 하나에서 받아 처리기로 넘긴다.
 // 지금 연결된 action: 로비 선택(select-license-class / select-track(A,B) / select-subject-b,
-// 연도·회차 select 의 change), Track B 시작(start-selected-exam), 문제 화면 조작(mark-answer /
-// prev-question / next-question), 로비 복귀(logout-to-lobby). 나머지는 이후 단계에서 채운다.
+// 연도·회차 select 와 Track A 과목 체크박스의 change), 시작(start-selected-exam, Track A/B), 문제 화면 조작
+// (mark-answer / prev-question / next-question), Track B 정답 확인, Track A 제출/결과/복습, 로비 복귀(logout-to-lobby).
+// 나머지는 이후 단계에서 채운다.
 // (교사용 action 은 두지 않는다.)
 
 import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.js';
-import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack } from './lobby-actions.js';
+import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack, toggleSubjectA } from './lobby-actions.js';
 import { returnToLobby, startSelectedExam } from './exam-actions.js';
 import { checkTrackBAnswer } from './track-b-actions.js';
+import {
+  cancelSubmitTrackA,
+  confirmSubmitTrackA,
+  requestSubmitTrackA,
+  retryTrackASave,
+  returnToSummaryList,
+  reviewTrackAQuestion,
+} from './track-a-actions.js';
 
 const notImplemented = null;
 
@@ -28,14 +37,19 @@ export const actionHandlers = {
   'prev-question': () => goToPrevQuestion(),
   'next-question': () => goToNextQuestion(),
   'check-track-b-answer': () => checkTrackBAnswer(), // Track B 정답 확인 (오답만 recordWrong 으로 기록)
-  'submit-track-a-exam': notImplemented,
-  'return-to-summary-list': notImplemented,
+  'submit-track-a-exam': () => requestSubmitTrackA(), // 최종 제출 확인 창 열기
+  'confirm-submit-track-a': () => confirmSubmitTrackA(), // 확인 -> 채점 + 오답 기록(recordWrong)
+  'cancel-submit-track-a': () => cancelSubmitTrackA(),
+  'retry-track-a-save': () => retryTrackASave(), // 오답 기록에 실패한 문항만 다시 저장
+  'review-track-a-question': ({ value }) => reviewTrackAQuestion(value), // data-value: 문제 위치(0부터)
+  'return-to-summary-list': () => returnToSummaryList(),
 };
 
 // <select> 값이 바뀔 때 쓰는 action. change 이벤트로만 처리하고, value 는 선택한 option 의 값이다.
 export const changeHandlers = {
   'select-year': ({ value }) => changeYear(value),
   'select-exam-round': ({ value }) => changeExamRound(value),
+  'toggle-subject-a': ({ value, element }) => toggleSubjectA(value, element.checked), // Track A 과목 체크박스
 };
 
 function dispatch(table, event, getValue) {

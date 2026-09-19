@@ -11,6 +11,7 @@ import {
   normalizeAnswerKey,
   normalizeImageUrl,
 } from './utils.js';
+import { renderResultPanel, renderSubmitConfirm } from './track-a-view.js';
 import { clearQuizFeedback } from './view.js';
 
 // V65 와 같은 클래스 문자열 (resetOptionsStyle / applySelectionStyle / 오답 보기 제외 스타일)
@@ -23,10 +24,21 @@ const OPTION_CLASS = {
     'option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-rose-300 flex items-center space-x-3 pointer-events-none opacity-50',
 };
 
+// 제출 후 복습 화면의 정답/잘못 고른 보기 표시 (V65 warpToQuestionAndShowExplanation 과 같은 스타일)
+OPTION_CLASS.reviewWrong =
+  'option-btn w-full text-left bg-rose-950/20 border-2 border-rose-500 p-4 rounded-2xl text-white flex items-center space-x-3 pointer-events-none';
+OPTION_CLASS.reviewCorrect =
+  'option-btn w-full text-left bg-emerald-950/20 border-2 border-emerald-400 p-4 rounded-2xl text-white flex items-center space-x-3 pointer-events-none';
+
 const TRACK_NAMES = { A: '모의고사', B: '과목 선택', C: '오답 소탕' };
 
 const byId = (id) => document.getElementById(id);
 const setHidden = (id, hidden) => byId(id)?.classList.toggle('hidden', hidden);
+
+// Track A 를 제출한 뒤에는 보기를 바꿀 수 없다.
+function isTrackASubmitted() {
+  return state.currentTrack === 'A' && state.quiz.submission !== null;
+}
 
 function isGraded(question) {
   return Boolean(state.quiz.graded[question.id]);
@@ -50,6 +62,7 @@ export function renderQuestion(question) {
   renderNavigationState();
   renderExplanationPreview(question);
   renderWorkspaceLayout(question);
+  renderSubmitConfirm();
 }
 
 // 문제 본문은 그대로 두고 정답 확인으로 바뀌는 부분(보기 상태, 버튼, 해설, 좌우 배치)만 다시 그린다.
@@ -137,13 +150,30 @@ export function renderChoiceStates(question) {
     if (key === marked) button.className = OPTION_CLASS.selected;
   }
 
-  if (isTrackA) return;
+  if (isTrackA) {
+    if (isTrackASubmitted()) renderSubmittedChoiceStates(question, marked);
+    return;
+  }
   // 틀려서 제외한 보기는 정답을 맞힌 뒤에도 그대로 표시한다 (V65 는 정답 직후에만 남고 다시 방문하면 사라졌다).
   for (const key of ANSWER_KEYS) {
     const button = byId(`opt-${key}`);
     if (!button) continue;
     if (eliminated.includes(key)) button.className = OPTION_CLASS.eliminated;
     if (isGraded(question)) button.classList.add('pointer-events-none', 'opacity-80');
+  }
+}
+
+// 제출 후: 모든 보기를 잠그고, 복습 중이면 정답(초록)과 잘못 고른 보기(빨강)를 표시한다.
+function renderSubmittedChoiceStates(question, marked) {
+  const item = state.quiz.submission.items.find((entry) => entry.questionId === question.id);
+  for (const key of ANSWER_KEYS) {
+    const button = byId(`opt-${key}`);
+    if (!button) continue;
+    if (state.quiz.reviewing && item) {
+      if (key === item.correctKey) button.className = OPTION_CLASS.reviewCorrect;
+      else if (key === marked) button.className = OPTION_CLASS.reviewWrong;
+    }
+    button.classList.add('pointer-events-none');
   }
 }
 
@@ -156,7 +186,7 @@ export function renderNavigationState() {
   if (state.currentTrack === 'A') {
     setHidden('btn-grade-b', true);
     setHidden('btn-next', isLast);
-    setHidden('btn-submit-a', !isLast);
+    setHidden('btn-submit-a', !isLast || isTrackASubmitted());
   } else {
     setHidden('btn-next', false);
     setHidden('btn-submit-a', true);
@@ -169,6 +199,10 @@ export function renderNavigationState() {
 export function renderExplanationPreview(question) {
   setHidden('exam-summary-block', true);
   setHidden('warp-return-container', true);
+  if (isTrackASubmitted()) {
+    renderResultPanel(question);
+    return;
+  }
   if (state.currentTrack === 'A') {
     setHidden('tutor-placeholder-a', false);
     setHidden('tutor-placeholder-b', true);
@@ -214,13 +248,13 @@ export function renderExplanationBlocks(question) {
   renderMath(block);
 }
 
-// 좌우 패널 배치: 모의고사 풀이 중, 그리고 정답확인 전에는 문제 영역이 전체 폭(12:0), 정답확인 후에는 8:4.
-// (모의고사 제출 후 결과 화면의 8:4 는 이후 단계에서 채점과 함께 붙인다.)
+// 좌우 패널 배치: 모의고사 풀이 중, 그리고 정답확인 전에는 문제 영역이 전체 폭(12:0),
+// 정답확인 후(Track B)와 모의고사 제출 후(결과/복습)에는 8:4.
 export function renderWorkspaceLayout(question) {
   const left = byId('workspace-left-panel');
   const right = byId('workspace-right-panel');
   if (!left || !right) return;
-  const split = state.currentTrack !== 'A' && isGraded(question);
+  const split = state.currentTrack === 'A' ? isTrackASubmitted() : isGraded(question);
   left.classList.toggle('lg:col-span-8', split);
   left.classList.toggle('lg:col-span-12', !split);
   right.classList.toggle('hidden', !split);

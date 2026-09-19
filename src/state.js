@@ -19,6 +19,10 @@ function createInitialQuizState() {
     graded: {}, // { [questionId]: true } 정답 확인이 끝난 문제 (Track B/C)
     // Track B/C 에서 이번 풀이 중 틀려서 보기에서 제외한 선택지. 영구 오답 기록(wrongPool)과 별개다.
     eliminatedChoices: {}, // { [questionId]: ['ga', ...] }
+    // Track A: 최종 제출 확인 창이 열려 있는지, 제출 결과(제출 전 null), 오답 복습 문제를 보고 있는지.
+    confirmingSubmit: false,
+    submission: null, // 제출 결과 요약 (track-a-actions.js 가 채운다)
+    reviewing: false, // 제출 후 결과 목록이 아니라 오답 한 문제의 복습 화면을 보고 있으면 true
   };
 }
 

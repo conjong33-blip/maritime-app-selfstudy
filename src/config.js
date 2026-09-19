@@ -6,6 +6,8 @@ export const config = {
   appName: '해기사 튜터',
   trackTypes: ['A', 'B', 'C'],
   licenseClasses: ['3급', '4급'],
+  // Track A 과목 체크박스 순서 (index.html 과 같다). 시험 문제도 이 순서로 묶어 출제한다.
+  trackASubjects: ['기관1', '기관2', '기관3', '직무일반', '영어'],
   // 학번/이름 최대 글자 수 (db/001_selfstudy_schema.sql 의 CHECK 와 같다)
   limits: { studentNo: 20, studentName: 50 },
   supabase: {
