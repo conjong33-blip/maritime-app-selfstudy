@@ -81,9 +81,17 @@
 - **알려진 한계(이번 버전에서 해결하지 않음):** 같은 학번+이름을 아는 사람은 `selfstudy_get_or_create_profile`을 호출해 기존 `profile_key`를 그대로 다시 받을 수 있다. 즉 남의 학번과 이름을 알면 그 학생의 오답 기록과 최근 세션을 읽고 바꿀 수 있다. 이를 해결하기 위한 PIN이나 Supabase Auth는 이번 버전에 넣지 않는다.
 - anon이 프로필을 만들 수 있는 횟수 제한(rate limit)은 없다. 길이 제한만 있다.
 
-## 8. 새 selfstudy DB 객체 (예정, 아직 미적용)
+## 8. 새 selfstudy DB 객체 (2026-09-19 운영 DB 적용 완료)
 
 정의 파일: `db/001_selfstudy_schema.sql`. 모두 `selfstudy_` prefix.
+
+**적용 상태 (2026-09-19, 운영 Supabase `fvpfkgzbztjpfuszybnf`)**
+- `db/001_selfstudy_schema.sql` 적용 완료. 테이블 3개 / RPC 7개 생성 확인.
+- 7개 RPC 모두 SECURITY DEFINER. 새 테이블 RLS ON, anon/authenticated의 테이블 직접 접근 차단, anon/authenticated의 RPC 실행 가능 확인.
+- 프로필 동일인 인식 테스트 성공(학번+이름, 공백 변형 포함).
+- 오답 누적(`wrong_count`) / clear / cleared 후 재오답 시 active 복귀 테스트 성공.
+- 테스트 데이터는 rollback 후 0건 확인.
+- **frontend는 아직 selfstudy RPC와 연결되지 않았다.**
 
 - 테이블 3개: `selfstudy_profiles`, `selfstudy_wrong_questions`, `selfstudy_sessions`
 - RPC 7개: `selfstudy_get_or_create_profile`, `selfstudy_get_session`, `selfstudy_save_session`,
@@ -111,13 +119,12 @@
 
 ## 10. 아직 하지 않은 것
 
-- `db/001_selfstudy_schema.sql`의 Supabase 적용 (미실행)
-- frontend 리팩터링
+- ~~`db/001_selfstudy_schema.sql`의 Supabase 적용~~ → **완료 (2026-09-19, 8번 참고)**
+- frontend 리팩터링 (Vite + Vanilla JS + ES Modules 골격만 있고, V65 기능 로직 이전과 selfstudy RPC 연결은 미착수)
 - GitHub remote 연결 / push
 - 배포 설정
 - PIN/auth 강화
 - teacher dashboard 신규 설계 (제거 예정이므로 신규 설계 계획 없음)
-- 이번 SQL/문서 작업물의 Git commit
 
 ## 11. 향후 확장 항목 (이번 001 schema에는 포함하지 않음)
 
