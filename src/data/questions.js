@@ -26,6 +26,12 @@ export const QUESTION_COLUMNS = [
   'option_na_img',
   'option_sa_img',
   'option_aa_img',
+  // HELPER(헷갈리기 쉬운 점): 읽기 전용. helper_needed=true 인 문제에만 내용이 있다 (null/false 는 표시하지 않는다).
+  'helper_needed',
+  'helper_symbols',
+  'helper_confusing_terms',
+  'helper_units',
+  'helper_common_mistake',
 ];
 const QUESTION_SELECT = QUESTION_COLUMNS.join(',');
 

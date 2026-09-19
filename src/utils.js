@@ -251,3 +251,89 @@ return '<!-- 1. 핵심 용어 블록 -->' +
 '<div class="text-sm text-slate-300 font-medium leading-relaxed space-y-2 whitespace-pre-line">' + formatBarText(q.explanation || "이 문항에는 아직 수록된 오답 해설집이 존재하지 않습니다.").replace(/㉮/g, '<b>㉮</b>').replace(/㉯/g, '<b>㉯</b>').replace(/㉴/g, '<b>㉴</b>').replace(/㉵/g, '<b>㉵</b>') + '</div>' +
 '</div>';
 }
+
+// ---------------------------------------------------------------------
+// HELPER("헷갈리기 쉬운 점") 표시. questions 의 helper_* 컬럼(읽기 전용)을 학생 화면용 HTML 로 만든다.
+//  - helper_needed === true 이고 실제로 쓸 수 있는 항목이 하나 이상 있을 때만 블록을 만든다.
+//    (false / null(아직 HELPER 미처리) / true 인데 내용 없음 -> 빈 문자열: 문구도 빈 박스도 만들지 않는다.)
+//  - 데이터가 어떤 모양이어도(null, 배열 아님, 객체 아님, 빈 문자열 ...) 예외를 던지지 않고 그 항목만 건너뛴다.
+//  - DB 문자열은 그대로 HTML 에 넣지 않는다: 모두 escape 한 뒤, BASE 해설과 같은 표기인 <sub>/<sup> 짝만 되살리고
+//    formatBarText(BASE 와 같은 윗선 표기 처리)를 적용한다. 수식($...$)은 호출하는 쪽이 renderMath 로 렌더링한다.
+// ---------------------------------------------------------------------
+const HELPER_GROUPS = [
+  { key: 'helper_symbols', title: '기호', pairs: true },
+  { key: 'helper_confusing_terms', title: '용어', pairs: true },
+  { key: 'helper_units', title: '단위', pairs: true },
+  { key: 'helper_common_mistake', title: '흔한 실수', pairs: false },
+];
+
+function cleanText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// 표시할 수 있는 HELPER 그룹만 돌려준다: [{ title, entries: [{ label, meaning }] | mistakes: [text] }]. 없으면 [].
+export function getHelperGroups(question) {
+  if (!question || question.helper_needed !== true) return [];
+  const groups = [];
+  for (const { key, title, pairs } of HELPER_GROUPS) {
+    const list = Array.isArray(question[key]) ? question[key] : [];
+    if (pairs) {
+      const entries = [];
+      for (const item of list) {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+        const label = cleanText(item.label);
+        const meaning = cleanText(item.meaning);
+        if (label || meaning) entries.push({ label, meaning });
+      }
+      if (entries.length > 0) groups.push({ title, entries });
+    } else {
+      const mistakes = list.map(cleanText).filter(Boolean);
+      if (mistakes.length > 0) groups.push({ title, mistakes });
+    }
+  }
+  return groups;
+}
+
+// 안전한 인라인 HTML: 전부 escape 하고, 짝이 맞는 <sub>..</sub>, <sup>..</sup> 만 되살린다.
+function escapeKeepingSubSup(text) {
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return escaped.replace(/&lt;(sub|sup)&gt;([\s\S]*?)&lt;\/\1&gt;/gi, (match, tag, inner) => `<${tag.toLowerCase()}>${inner}</${tag.toLowerCase()}>`);
+}
+
+const helperText = (text) => formatBarText(escapeKeepingSubSup(text));
+
+// BASE 해설 블록 아래에 붙이는 HELPER 블록. 표시할 내용이 없으면 ''.
+export function getHelperHtml(question) {
+  const groups = getHelperGroups(question);
+  if (groups.length === 0) return '';
+  const body = groups
+    .map((group) => {
+      const rows = group.entries
+        ? group.entries
+            .map(({ label, meaning }) => {
+              const head = label ? `<span class="font-extrabold text-white">${helperText(label)}</span>` : '';
+              const sep = label && meaning ? ' <span class="text-slate-500">—</span> ' : '';
+              return `<li class="text-sm text-slate-300 font-medium leading-relaxed">${head}${sep}${meaning ? helperText(meaning) : ''}</li>`;
+            })
+            .join('')
+        : group.mistakes.map((text) => `<li class="text-sm text-slate-300 font-medium leading-relaxed">${helperText(text)}</li>`).join('');
+      return `<div class="space-y-1.5"><div class="text-[11px] font-bold text-slate-400">${group.title}</div><ul class="space-y-1.5 list-disc pl-4 marker:text-amber-400/70">${rows}</ul></div>`;
+    })
+    .join('');
+  return (
+    '<!-- 4. 헷갈리기 쉬운 점(HELPER) -->' +
+    '<div data-helper-block class="bg-[#0B132B]/60 p-5 rounded-2xl border border-amber-500/30 space-y-3 mt-4 animate-fadeIn">' +
+    '<div class="flex items-center space-x-2 text-amber-400 text-xs font-bold uppercase tracking-wider">' +
+    '<i class="fa-solid fa-triangle-exclamation"></i>' +
+    '<span>헷갈리기 쉬운 점</span>' +
+    '</div>' +
+    body +
+    '</div>'
+  );
+}
+
+// 정답을 확인했거나 제출한 뒤에 보이는 해설 전체: 기존 3단 BASE 블록 + (있을 때만) HELPER 블록.
+// Track A 제출 후 복습과 Track B 정답 후 해설이 함께 쓴다 (Track C 도 같은 함수를 쓸 수 있다).
+export function getExplanationWithHelperHtml(question) {
+  return getExplanationBlocksHtml(question) + getHelperHtml(question);
+}

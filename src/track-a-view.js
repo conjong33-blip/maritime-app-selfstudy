@@ -3,7 +3,7 @@
 // 상태를 바꾸지 않고, DB 에도 접근하지 않는다.
 import { state } from './state.js';
 import { renderMath } from './math.js';
-import { formatAnswerLabel, getExplanationBlocksHtml } from './utils.js';
+import { formatAnswerLabel, getExplanationWithHelperHtml } from './utils.js';
 
 const byId = (id) => document.getElementById(id);
 const setHidden = (id, hidden) => byId(id)?.classList.toggle('hidden', hidden);
@@ -124,6 +124,7 @@ export function renderResultPanel(question) {
   setHidden('tutor-placeholder-a', true);
   setHidden('tutor-placeholder-b', true);
   if (!state.quiz.reviewing) {
+    byId('active-explanation-block').replaceChildren(); // 결과 목록에서는 이전 복습 내용(HELPER 포함)을 숨긴 채로도 남기지 않는다
     setHidden('active-explanation-block', true);
     setHidden('warp-return-container', true);
     setHidden('exam-summary-block', false);
@@ -172,7 +173,7 @@ function renderReview(question) {
 
   const blocks = document.createElement('div');
   blocks.className = 'space-y-4';
-  blocks.innerHTML = getExplanationBlocksHtml(question);
+  blocks.innerHTML = getExplanationWithHelperHtml(question);
   block.appendChild(blocks);
   renderMath(block);
 }

@@ -7,7 +7,7 @@ import {
   ANSWER_KEYS,
   formatAnswerLabel,
   formatBarText,
-  getExplanationBlocksHtml,
+  getExplanationWithHelperHtml,
   normalizeAnswerKey,
   normalizeImageUrl,
 } from './utils.js';
@@ -206,11 +206,14 @@ export function renderExplanationPreview(question) {
   if (state.currentTrack === 'A') {
     setHidden('tutor-placeholder-a', false);
     setHidden('tutor-placeholder-b', true);
+    byId('active-explanation-block')?.replaceChildren(); // 제출 전에는 이전 시험의 해설/HELPER 내용이 숨겨진 채로도 남지 않게 한다
     setHidden('active-explanation-block', true);
     return;
   }
   setHidden('tutor-placeholder-a', true);
   if (!isGraded(question)) {
+    // 정답을 확인하기 전에는 이전 문제의 해설/HELPER 내용이 숨겨진 채로도 남지 않게 비운다.
+    byId('active-explanation-block')?.replaceChildren();
     setHidden('active-explanation-block', true);
     setHidden('tutor-placeholder-b', false);
   } else {
@@ -243,7 +246,7 @@ export function renderExplanationBlocks(question) {
 
   const blocks = document.createElement('div');
   blocks.className = 'space-y-4';
-  blocks.innerHTML = getExplanationBlocksHtml(question);
+  blocks.innerHTML = getExplanationWithHelperHtml(question);
   block.appendChild(blocks);
   renderMath(block);
 }
