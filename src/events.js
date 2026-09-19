@@ -1,6 +1,8 @@
 // 이벤트 위임. index.html 의 [data-action] 요소 클릭을 document 하나에서 받아 처리기로 넘긴다.
-// 아직 어떤 동작도 구현하지 않았다. 각 action 의 실제 처리는 이후 단계에서 채운다.
-// (교사용 action 은 두지 않는다.)
+// 지금 연결된 action 은 화면 조작뿐인 mark-answer / prev-question / next-question 이고,
+// 나머지는 이후 단계에서 채운다. (교사용 action 은 두지 않는다.)
+
+import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.js';
 
 const notImplemented = null;
 
@@ -17,9 +19,9 @@ export const actionHandlers = {
   'logout-to-lobby': notImplemented, // 헤더 버튼 2개가 같은 action
 
   // 문제풀이
-  'mark-answer': notImplemented, // data-value: 'ga' | 'na' | 'sa' | 'aa'
-  'prev-question': notImplemented,
-  'next-question': notImplemented,
+  'mark-answer': ({ value }) => markAnswer(value), // data-value: 'ga' | 'na' | 'sa' | 'aa'
+  'prev-question': () => goToPrevQuestion(),
+  'next-question': () => goToNextQuestion(),
   'check-track-b-answer': notImplemented,
   'submit-track-a-exam': notImplemented,
   'return-to-summary-list': notImplemented,

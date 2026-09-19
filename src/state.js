@@ -43,6 +43,11 @@ function createInitialState() {
 
 export const state = createInitialState();
 
+// 지금 보고 있는 문제 (없으면 null)
+export function getCurrentQuestion() {
+  return state.quiz.questions[state.quiz.currentIndex] ?? null;
+}
+
 // 풀이 중인 문제 관련 상태만 초기 값으로 되돌린다.
 export function resetQuizState() {
   state.quiz = createInitialQuizState();
