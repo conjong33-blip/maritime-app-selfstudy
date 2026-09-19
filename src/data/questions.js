@@ -91,6 +91,17 @@ export async function fetchQuestions({ licenseClass, subject = null, subjects = 
   return rows;
 }
 
+// 문제 id 목록으로 조회 (최근 세션 복원용, SELECT only). 조회 결과의 순서는 보장하지 않으므로
+// 호출하는 쪽이 id 목록 순서대로 다시 정렬하고, 빠진 id 가 있는지도 확인해야 한다.
+export async function fetchQuestionsByIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) throw new DataError('문제 id 목록이 필요합니다.');
+  if (ids.length > MAX_QUESTIONS) throw new DataError(`문제 id 는 ${MAX_QUESTIONS}개까지 조회할 수 있습니다.`);
+  if (!ids.every((id) => Number.isInteger(id))) throw new DataError('문제 id 는 정수여야 합니다.');
+  const unique = [...new Set(ids)];
+  const query = getSupabaseClient().from('questions').select(QUESTION_SELECT).in('id', unique).limit(unique.length + 1);
+  return unwrap(await query, 'questions id 조회');
+}
+
 // 서버의 max-rows 설정과 관계없이 전체를 가져오도록 count 를 기준으로 페이지를 이어서 읽는다.
 async function fetchAllRows(buildQuery, context) {
   const rows = [];

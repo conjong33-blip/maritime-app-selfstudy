@@ -9,6 +9,7 @@ import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.j
 import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack, toggleSubjectA } from './lobby-actions.js';
 import { returnToLobby, startSelectedExam } from './exam-actions.js';
 import { checkTrackBAnswer } from './track-b-actions.js';
+import { checkIdentityForSession, clearAndStartFresh, resumeRecentSession } from './session-actions.js';
 import {
   cancelSubmitTrackA,
   confirmSubmitTrackA,
@@ -28,8 +29,8 @@ export const actionHandlers = {
   'select-track': ({ value }) => selectTrack(value), // data-value: 'A' | 'B' (C 는 아직 연결하지 않음)
   'select-subject-b': ({ value }) => selectSubjectB(value), // data-value: 과목명
   'start-selected-exam': () => startSelectedExam(), // Track B 만 시작 (문제 로드 + 문제 풀이 화면 전환)
-  'resume-session': notImplemented,
-  'clear-and-start-fresh': notImplemented,
+  'resume-session': () => resumeRecentSession(), // 최근 세션의 문제 세트와 위치로 이어서 학습 (답안은 복원하지 않음)
+  'clear-and-start-fresh': () => clearAndStartFresh(), // 최근 세션 삭제 ("아니오")
   'logout-to-lobby': () => returnToLobby(), // 문제 풀이를 끝내고 로비로 (헤더 버튼 2개가 같은 action)
 
   // 문제풀이
@@ -49,6 +50,7 @@ export const actionHandlers = {
 export const changeHandlers = {
   'select-year': ({ value }) => changeYear(value),
   'select-exam-round': ({ value }) => changeExamRound(value),
+  'check-identity': () => checkIdentityForSession(), // 학번/이름 입력 확정(blur, Enter) -> 최근 세션 확인
   'toggle-subject-a': ({ value, element }) => toggleSubjectA(value, element.checked), // Track A 과목 체크박스
 };
 

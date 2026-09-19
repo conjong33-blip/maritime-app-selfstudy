@@ -67,7 +67,7 @@
 <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
 <i class="fa-solid fa-id-card"></i>
 </span>
-<input type="text" id="student-id-input" maxlength="20" placeholder="예: 301105"
+<input type="text" id="student-id-input" data-action="check-identity" maxlength="20" placeholder="예: 301105"
 class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-extrabold tracking-widest text-lg focus:outline-none focus:border-[#5BC0BE] transition">
 </div>
 </div>
@@ -77,7 +77,7 @@ class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 te
 <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
 <i class="fa-solid fa-user"></i>
 </span>
-<input type="text" id="student-name-input" maxlength="50" placeholder="예: 홍길동"
+<input type="text" id="student-name-input" data-action="check-identity" maxlength="50" placeholder="예: 홍길동"
 class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-bold text-lg focus:outline-none focus:border-[#5BC0BE] transition">
 </div>
 </div>
@@ -312,6 +312,7 @@ class="w-full bg-gradient-to-r from-[#5BC0BE] to-[#3A506B] hover:from-[#5BC0BE] 
 <!-- 정답 확인 안내 (alert 대신 문제 영역 안에 표시) -->
 <p id="quiz-message" role="alert" class="hidden"></p>
 <p id="quiz-save-message" role="alert" class="hidden"></p>
+<p id="session-save-message" role="status" class="hidden"></p>
 <!-- 모의고사 최종 제출 확인 (confirm 대신 문제 영역 안에 표시) -->
 <div id="submit-confirm-box" role="alertdialog" class="hidden mb-4 rounded-xl border border-indigo-500/40 bg-indigo-950/30 px-4 py-3 space-y-3">
 <p id="submit-confirm-text" class="text-xs font-semibold text-indigo-100 leading-relaxed"></p>

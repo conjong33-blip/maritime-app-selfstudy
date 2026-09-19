@@ -222,6 +222,15 @@ export function selectSubjectB(value) {
   return refreshFilterOptions();
 }
 
+// state 의 급수/트랙/과목/연도/회차 선택을 로비 화면에 다시 그린다 (이어하기로 선택이 바뀐 뒤에 쓴다).
+export function syncLobbyFromState() {
+  renderLicenseClass();
+  renderTracks();
+  renderSubjectB();
+  renderSubjectsA();
+  return refreshFilterOptions();
+}
+
 // Track A 과목 체크/해제. checked 는 사용자가 방금 바꾼 체크 상태이고, 이후 표시는 state 로 다시 그린다.
 export function toggleSubjectA(value, checked) {
   if (state.currentTrack !== 'A' || !config.trackASubjects.includes(value)) return;

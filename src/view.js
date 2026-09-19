@@ -92,3 +92,31 @@ export function showConnectionError(error) {
 export function hideConnectionError() {
   byId('connection-error-box').classList.add('hidden');
 }
+
+// 최근 학습 세션 저장 실패 안내 (문제 풀이를 막지 않는 작은 안내). 오답 저장 실패 안내와 따로 둔다.
+export function showSessionSaveError(text) {
+  setMessage('session-save-message', text, 'warning');
+}
+
+export function clearSessionSaveError() {
+  clearMessage('session-save-message');
+}
+
+// 로비의 "이어서 학습하기" 카드 (V65 resume-prompt-card)
+export function showResumeCard(infoText) {
+  byId('resume-session-info').innerText = infoText;
+  byId('resume-prompt-card').classList.remove('hidden');
+}
+
+export function hideResumeCard() {
+  byId('resume-prompt-card').classList.add('hidden');
+}
+
+// 이어하기/처음부터 시작 처리 중에는 카드의 두 버튼을 잠근다.
+export function setResumeCardBusy(busy) {
+  for (const button of byId('resume-prompt-card').querySelectorAll('button')) {
+    button.disabled = busy;
+    button.classList.toggle('opacity-60', busy);
+    button.classList.toggle('cursor-wait', busy);
+  }
+}

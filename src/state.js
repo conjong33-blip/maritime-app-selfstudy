@@ -22,6 +22,8 @@ function createInitialQuizState() {
     // Track A: 최종 제출 확인 창이 열려 있는지, 제출 결과(제출 전 null), 오답 복습 문제를 보고 있는지.
     confirmingSubmit: false,
     submission: null, // 제출 결과 요약 (track-a-actions.js 가 채운다)
+    // 이 문제 세트를 시작한 조건 (최근 세션 저장에 쓴다). { track, licenseClass, subject, subjects, year, examRound }
+    origin: null,
     reviewing: false, // 제출 후 결과 목록이 아니라 오답 한 문제의 복습 화면을 보고 있으면 true
   };
 }
@@ -44,7 +46,10 @@ function createInitialState() {
     wrongPool: {
       activeQuestionIds: [],
     },
-    session: null, // 최근 학습 세션 (연결 이후에 채운다)
+    // 학생의 최근 학습 세션 1개 (DB selfstudy_sessions 의 사본). 답안은 저장하지 않는다.
+    // { trackType, licenseClass, subject, selectedSubjects, year, examRound, questionIds,
+    //   currentQuestionId, currentQuestionIndex, updatedAt } 또는 null. profile 과는 별개다.
+    session: null,
   };
 }
 

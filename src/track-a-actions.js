@@ -8,6 +8,7 @@ import { gradeTrackA } from './utils.js';
 import { recordWrong } from './data/selfstudy.js';
 import { renderCurrentQuestion, renderQuestionStatus } from './quiz-renderer.js';
 import { renderSaveStatus, renderSubmitConfirm } from './track-a-view.js';
+import { clearRecentSession } from './session-actions.js';
 import { clearQuizFeedback } from './view.js';
 
 let isSubmitting = false; // 제출 처리 중 (중복 제출과 오답 중복 기록 방지)
@@ -50,6 +51,8 @@ export async function confirmSubmitTrackA() {
     state.quiz.confirmingSubmit = false;
     state.quiz.reviewing = false;
     renderCurrentQuestion();
+    // 제출이 끝났으므로 최근 학습 위치는 지운다. 오답 기록의 성공 여부와는 별개이고, 실패해도 결과 화면은 그대로다.
+    void clearRecentSession();
 
     const profileKey = state.profile?.profileKey;
     const failed = await recordWrongs(profileKey, wrongIdsOf(submission));
