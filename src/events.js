@@ -1,10 +1,12 @@
 // 이벤트 위임. index.html 의 [data-action] 요소 클릭을 document 하나에서 받아 처리기로 넘긴다.
 // 지금 연결된 action: 로비 선택(select-license-class / select-track(A,B) / select-subject-b,
-// 연도·회차 select 의 change) 과 문제 화면 조작(mark-answer / prev-question / next-question).
-// 나머지는 이후 단계에서 채운다. (교사용 action 은 두지 않는다.)
+// 연도·회차 select 의 change), Track B 시작(start-selected-exam), 문제 화면 조작(mark-answer /
+// prev-question / next-question), 로비 복귀(logout-to-lobby). 나머지는 이후 단계에서 채운다.
+// (교사용 action 은 두지 않는다.)
 
 import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.js';
 import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack } from './lobby-actions.js';
+import { returnToLobby, startSelectedExam } from './exam-actions.js';
 
 const notImplemented = null;
 
@@ -15,10 +17,10 @@ export const actionHandlers = {
   'select-license-class': ({ value }) => selectLicenseClass(value), // data-value: '3급' | '4급'
   'select-track': ({ value }) => selectTrack(value), // data-value: 'A' | 'B' (C 는 아직 연결하지 않음)
   'select-subject-b': ({ value }) => selectSubjectB(value), // data-value: 과목명
-  'start-selected-exam': notImplemented,
+  'start-selected-exam': () => startSelectedExam(), // Track B 만 시작 (문제 로드 + 문제 풀이 화면 전환)
   'resume-session': notImplemented,
   'clear-and-start-fresh': notImplemented,
-  'logout-to-lobby': notImplemented, // 헤더 버튼 2개가 같은 action
+  'logout-to-lobby': () => returnToLobby(), // 문제 풀이를 끝내고 로비로 (헤더 버튼 2개가 같은 action)
 
   // 문제풀이
   'mark-answer': ({ value }) => markAnswer(value), // data-value: 'ga' | 'na' | 'sa' | 'aa'

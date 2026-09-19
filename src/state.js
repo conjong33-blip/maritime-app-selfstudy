@@ -24,6 +24,7 @@ function createInitialQuizState() {
 
 function createInitialState() {
   return {
+    view: 'lobby', // 지금 보이는 화면: 'lobby' | 'quiz'
     profile: null, // 학번+이름으로 확인한 프로필 (연결 이후에 채운다)
     licenseClass: '3급', // V65 최초 화면과 동일: 3급 선택 상태
     currentTrack: null,

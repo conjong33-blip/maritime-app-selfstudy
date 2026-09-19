@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { state, setCurrentTrack } from './state.js';
 import { fetchQuestionMetadata } from './data/questions.js';
 import { resolveFilterSelection } from './utils.js';
+import { hideConnectionError, showConnectionError } from './view.js';
 
 // V65 와 같은 클래스 문자열
 const CLASSES = {
@@ -81,15 +82,6 @@ function renderSubjectB() {
   for (const button of document.querySelectorAll('.subject-card')) {
     button.className = button.dataset.value === state.filters.subject ? CLASSES.subjectSelected : CLASSES.subjectIdle;
   }
-}
-
-function showConnectionError(error) {
-  byId('connection-error-message').innerText = error instanceof Error ? error.message : String(error);
-  byId('connection-error-box').classList.remove('hidden');
-}
-
-function hideConnectionError() {
-  byId('connection-error-box').classList.add('hidden');
 }
 
 function activeSelects() {
