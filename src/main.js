@@ -1,13 +1,5 @@
-// 앱 진입점. V65 기능은 이후 단계에서 모듈로 나누어 이곳에서 연결한다.
+// 앱 진입점. 화면은 index.html 의 정적 구조 그대로 두고, 이벤트 위임만 등록한다.
 import './styles.css';
-import { config } from './config.js';
-import { state } from './state.js';
+import { registerEvents } from './events.js';
 
-function init() {
-  const app = document.getElementById('app');
-  if (!app) return;
-  document.title = config.appName;
-  app.dataset.track = state.currentTrack;
-}
-
-init();
+registerEvents();
