@@ -3,7 +3,15 @@
 // 문제 객체는 questions 행 형태(option_ga/na/sa/aa, option_*_img, image_url 등)를 가정한다.
 import { state, getCurrentQuestion } from './state.js';
 import { renderMath } from './math.js';
-import { ANSWER_KEYS, formatBarText, getExplanationBlocksHtml, normalizeImageUrl } from './utils.js';
+import {
+  ANSWER_KEYS,
+  formatAnswerLabel,
+  formatBarText,
+  getExplanationBlocksHtml,
+  normalizeAnswerKey,
+  normalizeImageUrl,
+} from './utils.js';
+import { clearQuizFeedback } from './view.js';
 
 // V65 와 같은 클래스 문자열 (resetOptionsStyle / applySelectionStyle / 오답 보기 제외 스타일)
 const OPTION_CLASS = {
@@ -32,11 +40,20 @@ export function renderCurrentQuestion() {
 }
 
 export function renderQuestion(question) {
+  clearQuizFeedback();
   renderQuestionHeader(question);
   renderQuestionImage(question);
   renderQuestionText(question);
   renderChoices(question);
   renderChoiceImages(question);
+  renderChoiceStates(question);
+  renderNavigationState();
+  renderExplanationPreview(question);
+  renderWorkspaceLayout(question);
+}
+
+// 문제 본문은 그대로 두고 정답 확인으로 바뀌는 부분(보기 상태, 버튼, 해설, 좌우 배치)만 다시 그린다.
+export function renderQuestionStatus(question) {
   renderChoiceStates(question);
   renderNavigationState();
   renderExplanationPreview(question);
@@ -121,15 +138,12 @@ export function renderChoiceStates(question) {
   }
 
   if (isTrackA) return;
+  // 틀려서 제외한 보기는 정답을 맞힌 뒤에도 그대로 표시한다 (V65 는 정답 직후에만 남고 다시 방문하면 사라졌다).
   for (const key of ANSWER_KEYS) {
     const button = byId(`opt-${key}`);
     if (!button) continue;
-    if (isGraded(question)) {
-      button.classList.add('pointer-events-none', 'opacity-80');
-    } else {
-      button.classList.remove('pointer-events-none', 'opacity-80');
-      if (eliminated.includes(key)) button.className = OPTION_CLASS.eliminated;
-    }
+    if (eliminated.includes(key)) button.className = OPTION_CLASS.eliminated;
+    if (isGraded(question)) button.classList.add('pointer-events-none', 'opacity-80');
   }
 }
 
@@ -150,7 +164,8 @@ export function renderNavigationState() {
   }
 }
 
-// 우측 해설 영역의 "공개 전" 초기 상태만 그린다. 정답확인 후 해설 공개는 이후 단계.
+// 우측 해설 영역: 정답 확인 전에는 안내만 보이고 해설은 숨긴다. 정답을 맞힌 문제(graded)는 해설을 보인다.
+// (다시 방문해도 state 만으로 같은 화면이 나온다.)
 export function renderExplanationPreview(question) {
   setHidden('exam-summary-block', true);
   setHidden('warp-return-container', true);
@@ -166,15 +181,32 @@ export function renderExplanationPreview(question) {
     setHidden('tutor-placeholder-b', false);
   } else {
     setHidden('tutor-placeholder-b', true);
+    renderExplanationBlocks(question);
+    setHidden('active-explanation-block', false);
   }
 }
 
-// 해설 3단 블록(핵심 용어 / 쉬운 개념 정의 또는 영어 번역 / 정답 및 보기 원리 분석)의 내용을 채운다.
-// 언제 보여줄지는 호출하는 쪽이 정한다 (아직 어디에서도 호출하지 않는다).
+// 정답 배지 + 해설 3단 블록(핵심 용어 / 쉬운 개념 정의 또는 영어 번역 / 정답 및 보기 원리 분석)의 내용을 채운다.
+// 구조는 V65 showTrackBExplanation 과 같다: [배지 카드] + [해설 블록]. 보이고 숨기는 것은 호출하는 쪽이 정한다.
 export function renderExplanationBlocks(question) {
   const block = byId('active-explanation-block');
   if (!block) return;
   block.innerHTML = '';
+
+  const correctKey = normalizeAnswerKey(question.correct_answer);
+  const template = byId('tpl-badge-correct');
+  if (template) {
+    const badge = template.content.cloneNode(true);
+    const marked = state.quiz.markedAnswers[question.id] ?? correctKey;
+    badge.querySelector('.correct-subtitle-label').innerText =
+      `마킹한 답: ${formatAnswerLabel(marked)} | 정답: ${formatAnswerLabel(correctKey)}`;
+    const card = document.createElement('div');
+    card.id = 'grade-badge-card';
+    card.className = 'p-4 rounded-xl bg-[#09291E]/80 border border-emerald-500/30 mb-4 animate-fadeIn';
+    card.appendChild(badge);
+    block.appendChild(card);
+  }
+
   const blocks = document.createElement('div');
   blocks.className = 'space-y-4';
   blocks.innerHTML = getExplanationBlocksHtml(question);

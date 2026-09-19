@@ -7,6 +7,7 @@
 import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.js';
 import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack } from './lobby-actions.js';
 import { returnToLobby, startSelectedExam } from './exam-actions.js';
+import { checkTrackBAnswer } from './track-b-actions.js';
 
 const notImplemented = null;
 
@@ -26,7 +27,7 @@ export const actionHandlers = {
   'mark-answer': ({ value }) => markAnswer(value), // data-value: 'ga' | 'na' | 'sa' | 'aa'
   'prev-question': () => goToPrevQuestion(),
   'next-question': () => goToNextQuestion(),
-  'check-track-b-answer': notImplemented,
+  'check-track-b-answer': () => checkTrackBAnswer(), // Track B 정답 확인 (오답만 recordWrong 으로 기록)
   'submit-track-a-exam': notImplemented,
   'return-to-summary-list': notImplemented,
 };

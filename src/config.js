@@ -6,6 +6,8 @@ export const config = {
   appName: '해기사 튜터',
   trackTypes: ['A', 'B', 'C'],
   licenseClasses: ['3급', '4급'],
+  // 학번/이름 최대 글자 수 (db/001_selfstudy_schema.sql 의 CHECK 와 같다)
+  limits: { studentNo: 20, studentName: 50 },
   supabase: {
     url: import.meta.env.VITE_SUPABASE_URL ?? '',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',

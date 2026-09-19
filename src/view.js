@@ -48,6 +48,41 @@ export function setStartLoading(loading) {
   button.classList.toggle('cursor-wait', loading);
 }
 
+// 문제 풀이 화면의 안내 (alert 대신). 정답 확인 결과 안내(quiz-message)와 오답 저장 실패 안내(quiz-save-message)를 따로 둔다.
+const MESSAGE_BASE = 'mb-4 rounded-xl border px-4 py-3 text-xs font-semibold';
+const MESSAGE_TONES = {
+  warning: 'bg-amber-950/40 border-amber-600/40 text-amber-200',
+  error: 'bg-rose-950/40 border-rose-600/40 text-rose-200',
+};
+
+function setMessage(id, text, tone) {
+  const element = byId(id);
+  element.innerText = text;
+  element.className = `${MESSAGE_BASE} ${MESSAGE_TONES[tone] ?? MESSAGE_TONES.warning}`;
+}
+
+function clearMessage(id) {
+  const element = byId(id);
+  element.innerText = '';
+  element.className = 'hidden';
+}
+
+export function showQuizMessage(text, tone = 'warning') {
+  setMessage('quiz-message', text, tone);
+}
+
+export function clearQuizFeedback() {
+  clearMessage('quiz-message');
+}
+
+export function showQuizSaveError(text) {
+  setMessage('quiz-save-message', text, 'error');
+}
+
+export function clearQuizSaveError() {
+  clearMessage('quiz-save-message');
+}
+
 // 통신 오류 안내 박스 (V65 의 connection-error-box)
 export function showConnectionError(error) {
   byId('connection-error-message').innerText = error instanceof Error ? error.message : String(error);

@@ -62,12 +62,12 @@
 <!-- Student ID & Name Entry Grid -->
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
 <div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40">
-<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학번 입력 (6자리)</label>
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학번 입력</label>
 <div class="relative">
 <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
 <i class="fa-solid fa-id-card"></i>
 </span>
-<input type="text" id="student-id-input" maxlength="6" placeholder="예: 301105"
+<input type="text" id="student-id-input" maxlength="20" placeholder="예: 301105"
 class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-extrabold tracking-widest text-lg focus:outline-none focus:border-[#5BC0BE] transition">
 </div>
 </div>
@@ -77,7 +77,7 @@ class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 te
 <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
 <i class="fa-solid fa-user"></i>
 </span>
-<input type="text" id="student-name-input" placeholder="예: 홍길동"
+<input type="text" id="student-name-input" maxlength="50" placeholder="예: 홍길동"
 class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 text-white placeholder-slate-500 font-bold text-lg focus:outline-none focus:border-[#5BC0BE] transition">
 </div>
 </div>
@@ -309,6 +309,9 @@ class="w-full bg-gradient-to-r from-[#5BC0BE] to-[#3A506B] hover:from-[#5BC0BE] 
 </div>
 </button>
 </div>
+<!-- 정답 확인 안내 (alert 대신 문제 영역 안에 표시) -->
+<p id="quiz-message" role="alert" class="hidden"></p>
+<p id="quiz-save-message" role="alert" class="hidden"></p>
 </div>
 <!-- Footer Navigation Buttons -->
 <div class="flex items-center justify-between border-t border-[#3A506B]/40 pt-4 gap-4 mt-6">

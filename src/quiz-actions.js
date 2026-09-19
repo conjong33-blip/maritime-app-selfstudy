@@ -3,6 +3,7 @@
 import { state, getCurrentQuestion } from './state.js';
 import { ANSWER_KEYS } from './utils.js';
 import { renderChoiceStates, renderCurrentQuestion } from './quiz-renderer.js';
+import { clearQuizFeedback } from './view.js';
 
 // 보기 선택. 이미 선택한 보기를 다시 눌러도 선택은 유지된다 (V65 와 동일, 해제하지 않음).
 export function markAnswer(key) {
@@ -13,6 +14,7 @@ export function markAnswer(key) {
   if ((state.quiz.eliminatedChoices[id] ?? []).includes(key)) return;
 
   state.quiz.markedAnswers[id] = key;
+  clearQuizFeedback();
   renderChoiceStates(question);
 }
 
