@@ -1,0 +1,12 @@
+# 새 소스/SQL/문서는 어떤 OS/설정(core.autocrlf)에서도 LF로 통일
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.sql  text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+
+# legacy 기준본은 byte 그대로 보존 (줄바꿈 변환/정규화 금지).
+# 주의: gitattributes 는 뒤에 있는 규칙이 앞의 규칙을 덮어쓰므로,
+#       위의 *.html text eol=lf 가 legacy 파일에 적용되지 않도록 반드시 맨 아래에 둔다.
+legacy/** -text
