@@ -1,5 +1,5 @@
 // 이벤트 위임. index.html 의 [data-action] 요소 클릭을 document 하나에서 받아 처리기로 넘긴다.
-// 지금 연결된 action: 로비 선택(select-license-class / select-track(A,B) / select-subject-b,
+// 지금 연결된 action: 로비 선택(select-license-class / select-track(A,B,C) / select-subject-b,
 // 연도·회차 select 와 Track A 과목 체크박스의 change), 시작(start-selected-exam, Track A/B), 문제 화면 조작
 // (mark-answer / prev-question / next-question), Track B 정답 확인, Track A 제출/결과/복습, 로비 복귀(logout-to-lobby).
 // 나머지는 이후 단계에서 채운다.
@@ -9,6 +9,7 @@ import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.j
 import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack, toggleSubjectA } from './lobby-actions.js';
 import { returnToLobby, startSelectedExam } from './exam-actions.js';
 import { checkTrackBAnswer } from './track-b-actions.js';
+import { finishTrackC, restartTrackC, retryClearWrong } from './track-c-actions.js';
 import { checkIdentityForSession, clearAndStartFresh, resumeRecentSession } from './session-actions.js';
 import {
   cancelSubmitTrackA,
@@ -44,6 +45,9 @@ export const actionHandlers = {
   'retry-track-a-save': () => retryTrackASave(), // 오답 기록에 실패한 문항만 다시 저장
   'review-track-a-question': ({ value }) => reviewTrackAQuestion(value), // data-value: 문제 위치(0부터)
   'return-to-summary-list': () => returnToSummaryList(),
+  'finish-track-c': () => finishTrackC(), // Track C 마지막 문제 정리 후 남은 오답을 다시 확인
+  'restart-track-c': () => restartTrackC(), // 마무리 후 남은 오답으로 다시 시작
+  'retry-track-c-clear': () => retryClearWrong(), // 오답 정리(clearWrong)에 실패한 문제만 다시 저장
 };
 
 // <select> 값이 바뀔 때 쓰는 action. change 이벤트로만 처리하고, value 는 선택한 option 의 값이다.

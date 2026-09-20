@@ -24,6 +24,9 @@ function createInitialQuizState() {
     submission: null, // 제출 결과 요약 (track-a-actions.js 가 채운다)
     // 이 문제 세트를 시작한 조건 (최근 세션 저장에 쓴다). { track, licenseClass, subject, subjects, year, examRound }
     origin: null,
+    // Track C: 정답을 맞힌 문제의 오답 정리(clearWrong) 상태 { [questionId]: 'pending' | 'done' | 'failed' }, 마무리 결과 { remaining } | { error }
+    clearStatus: {},
+    completion: null,
     reviewing: false, // 제출 후 결과 목록이 아니라 오답 한 문제의 복습 화면을 보고 있으면 true
   };
 }
@@ -44,7 +47,9 @@ function createInitialState() {
     metadata: { combinations: [] },
     quiz: createInitialQuizState(),
     wrongPool: {
-      activeQuestionIds: [],
+      activeQuestionIds: [], // 이 학생의 active 오답 questions.id (RPC 순서: 처음 틀린 순)
+      profileKey: null, // 위 목록이 어느 프로필의 것인지
+      loaded: false, // 한 번이라도 DB 에서 읽었는지 (프로필 확인 전에는 false)
     },
     // 학생의 최근 학습 세션 1개 (DB selfstudy_sessions 의 사본). 답안은 저장하지 않는다.
     // { trackType, licenseClass, subject, selectedSubjects, year, examRound, questionIds,

@@ -44,7 +44,20 @@ const TRACKS = {
     yearSelectId: 'year-select-b',
     roundSelectId: 'round-select-b',
   },
+  // Track C 는 연도/회차/과목을 고르지 않는다 (지금 남은 오답 전체)
+  C: {
+    cardId: 'btn-track-c',
+    hover: ' hover:border-rose-500/60',
+    selected: ' border-rose-500 shadow-lg shadow-rose-500/10',
+    badgeText: '오답소탕',
+    badgeClass: 'px-3 py-1 text-xs font-bold rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400',
+    optionsId: null,
+    yearSelectId: null,
+    roundSelectId: null,
+  },
 };
+const DISABLED_CARD = ' opacity-40 pointer-events-none';
+const hasActiveWrongs = () => state.wrongPool.activeQuestionIds.length > 0;
 const DIMMED_CARD = ' opacity-60 border-[#3A506B]/20';
 
 const LOADING_TEXT = '불러오는 중…';
@@ -63,14 +76,14 @@ function renderLicenseClass() {
   byId('btn-class-4').className = state.licenseClass === '4급' ? CLASSES.licenseSelected : CLASSES.licenseIdle;
 }
 
-// Track A/B 카드, 상단 배지, 필터 영역 표시. Track C 카드는 건드리지 않는다.
+// Track A/B/C 카드, 상단 배지, 필터 영역 표시.
 function renderTracks() {
   const track = state.currentTrack;
   if (!TRACKS[track]) return;
   for (const [key, def] of Object.entries(TRACKS)) {
-    byId(def.cardId).className =
-      CLASSES.trackBase + def.hover + (key === track ? def.selected : DIMMED_CARD);
-    byId(def.optionsId).classList.toggle('hidden', key !== track);
+    if (key === 'C') renderTrackCCard();
+    else byId(def.cardId).className = CLASSES.trackBase + def.hover + (key === track ? def.selected : DIMMED_CARD);
+    if (def.optionsId) byId(def.optionsId).classList.toggle('hidden', key !== track);
   }
   const badge = byId('active-track-badge');
   badge.innerText = TRACKS[track].badgeText;
@@ -85,6 +98,34 @@ function renderSubjectB() {
   for (const button of document.querySelectorAll('.subject-card')) {
     button.className = button.dataset.value === state.filters.subject ? CLASSES.subjectSelected : CLASSES.subjectIdle;
   }
+}
+
+// Track C 카드: 남은 오답이 없으면 선택할 수 없게 흐리게 두고, 있으면 남은 개수를 보여 준다.
+export function renderTrackCCard() {
+  const card = byId('btn-track-c');
+  if (!card) return;
+  const def = TRACKS.C;
+  const count = state.wrongPool.activeQuestionIds.length;
+  let tail = '';
+  if (state.currentTrack === 'C') tail = def.selected;
+  else if (count === 0) tail = DISABLED_CARD;
+  else if (state.currentTrack !== null) tail = DIMMED_CARD;
+  card.className = CLASSES.trackBase + def.hover + tail;
+  const label = byId('track-c-count');
+  if (label) {
+    label.innerText = `${count}문제 남음`;
+    label.classList.toggle('hidden', !state.wrongPool.loaded || count === 0);
+  }
+}
+
+// 남은 오답이 0 이 되면 Track C 선택을 풀고 카드를 비활성/완료 상태로 되돌린다 ("소탕할 오답 없음"과 선택 표시가 함께 남지 않게).
+// Track A/B 선택은 건드리지 않는다. 문제 풀이 중(quiz)에는 하지 않는다.
+export function deselectTrackCIfEmpty() {
+  if (state.view !== 'lobby' || state.currentTrack !== 'C' || hasActiveWrongs()) return;
+  setCurrentTrack(null);
+  byId('filters-container').classList.add('hidden');
+  for (const key of ['A', 'B']) byId(TRACKS[key].cardId).className = CLASSES.trackBase + TRACKS[key].hover;
+  renderTrackCCard();
 }
 
 // Track A 과목 체크박스 표시. state.filters.subjects 를 그대로 보여 준다 (DOM 이 기준이 아니다).
@@ -102,7 +143,7 @@ function activeCombinations() {
 
 function activeSelects() {
   const def = TRACKS[state.currentTrack];
-  return def ? { year: byId(def.yearSelectId), round: byId(def.roundSelectId) } : null;
+  return def?.yearSelectId ? { year: byId(def.yearSelectId), round: byId(def.roundSelectId) } : null;
 }
 
 // select 하나를 안내 문구 한 줄로 바꾸고 잠근다 (불러오는 중, 없음, 실패).
@@ -203,9 +244,10 @@ export function selectLicenseClass(value) {
   return refreshFilterOptions();
 }
 
-// Track A / B 만 처리한다. C 나 알 수 없는 값은 무시한다.
+// Track A / B / C 를 처리한다 (C 는 남은 오답이 있을 때만). 알 수 없는 값은 무시한다.
 export function selectTrack(value) {
   if (!Object.hasOwn(TRACKS, value)) return;
+  if (value === 'C' && !hasActiveWrongs()) return;
   setCurrentTrack(value);
   // V65 처럼 처음 Track A 에 들어가면 기관1 이 체크된 상태로 시작한다 (state 가 기준이고 체크박스는 그것을 보여 준다).
   if (value === 'A' && state.filters.subjects.length === 0) state.filters.subjects = [config.trackASubjects[0]];

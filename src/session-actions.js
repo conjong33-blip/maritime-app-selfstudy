@@ -11,6 +11,7 @@ import { fetchQuestionsByIds } from './data/questions.js';
 import { ensureProfile, isSameIdentity, readIdentity, validateIdentity } from './profile.js';
 import { syncLobbyFromState } from './lobby-actions.js';
 import { renderCurrentQuestion } from './quiz-renderer.js';
+import { refreshActiveWrongs, resetActiveWrongs } from './track-c-actions.js';
 import {
   clearSessionSaveError,
   clearStartMessage,
@@ -159,17 +160,20 @@ export async function checkIdentityForSession() {
   const identity = readIdentity();
   if (validateIdentity(identity) !== null) {
     hideResumeCard();
+    resetActiveWrongs();
     return;
   }
   if (!isSameIdentity(identity)) {
     hideResumeCard(); // 다른 학생 입력: 이전 학생의 카드는 바로 숨긴다
     state.session = null;
+    resetActiveWrongs();
   }
   try {
     const profile = await ensureProfile(identity);
     if (requestId !== identityRequestId || !isSameCurrentInput(identity)) return;
     if (state.profile?.profileKey !== profile.profileKey) state.session = null;
     state.profile = profile;
+    void refreshActiveWrongs(); // 프로필이 확인되면 남은 오답 수(Track C 카드)도 함께 확인한다
     const session = await getSession(profile.profileKey);
     if (requestId !== identityRequestId || !isSameCurrentInput(identity)) return;
     state.session = session;

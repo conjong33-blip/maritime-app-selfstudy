@@ -12,6 +12,7 @@ import {
   normalizeImageUrl,
 } from './utils.js';
 import { renderResultPanel, renderSubmitConfirm } from './track-a-view.js';
+import { renderTrackCStatus } from './track-c-view.js';
 import { clearQuizFeedback } from './view.js';
 
 // V65 와 같은 클래스 문자열 (resetOptionsStyle / applySelectionStyle / 오답 보기 제외 스타일)
@@ -63,6 +64,7 @@ export function renderQuestion(question) {
   renderExplanationPreview(question);
   renderWorkspaceLayout(question);
   renderSubmitConfirm();
+  renderTrackCStatus();
 }
 
 // 문제 본문은 그대로 두고 정답 확인으로 바뀌는 부분(보기 상태, 버튼, 해설, 좌우 배치)만 다시 그린다.
@@ -71,6 +73,7 @@ export function renderQuestionStatus(question) {
   renderNavigationState();
   renderExplanationPreview(question);
   renderWorkspaceLayout(question);
+  renderTrackCStatus();
 }
 
 // 트랙 이름, 제목줄, 문제 번호 배지
@@ -81,10 +84,8 @@ function renderQuestionHeader(question) {
 
   const title = byId('subject-title');
   if (title) {
-    title.innerText =
-      state.currentTrack === 'C'
-        ? `[${grade} ${question.subject}] 오답 클리닉 피드백`
-        : `[${grade} ${question.subject}] ${question.year}년 ${question.exam_round}`;
+    // Track C 는 급수/과목/회차가 섞여 있으므로 문제마다 어느 시험지 문제인지 그대로 보여 준다.
+    title.innerText = `[${grade} ${question.subject}] ${question.year}년 ${question.exam_round}`;
   }
   const current = byId('current-num-badge');
   if (current) current.innerText = String(state.quiz.currentIndex + 1);
@@ -187,7 +188,17 @@ export function renderNavigationState() {
     setHidden('btn-grade-b', true);
     setHidden('btn-next', isLast);
     setHidden('btn-submit-a', !isLast || isTrackASubmitted());
+    setHidden('btn-finish-c', true);
+  } else if (state.currentTrack === 'C') {
+    // 오답소탕: 이 문제를 정답으로 맞히고 오답 정리(clearWrong)까지 끝나야 다음 문제로 넘어갈 수 있다.
+    const solved = state.quiz.clearStatus[question.id] === 'done';
+    const finished = Boolean(state.quiz.completion);
+    setHidden('btn-submit-a', true);
+    setHidden('btn-grade-b', isGraded(question));
+    setHidden('btn-next', !solved || isLast || finished);
+    setHidden('btn-finish-c', !(solved && isLast) || finished);
   } else {
+    setHidden('btn-finish-c', true);
     setHidden('btn-next', false);
     setHidden('btn-submit-a', true);
     setHidden('btn-grade-b', isGraded(question));

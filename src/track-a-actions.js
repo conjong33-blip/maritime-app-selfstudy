@@ -9,6 +9,7 @@ import { recordWrong } from './data/selfstudy.js';
 import { renderCurrentQuestion, renderQuestionStatus } from './quiz-renderer.js';
 import { renderSaveStatus, renderSubmitConfirm } from './track-a-view.js';
 import { clearRecentSession } from './session-actions.js';
+import { trackWrite } from './pending-writes.js';
 import { clearQuizFeedback } from './view.js';
 
 let isSubmitting = false; // 제출 처리 중 (중복 제출과 오답 중복 기록 방지)
@@ -36,7 +37,7 @@ const wrongIdsOf = (submission) => submission.items.filter((item) => item.result
 // ids 를 recordWrong 으로 기록하고 실패한 id 목록을 돌려준다. 하나가 실패해도 나머지는 계속 기록한다.
 async function recordWrongs(profileKey, ids) {
   if (!profileKey) return [...ids];
-  const results = await Promise.allSettled(ids.map((id) => recordWrong(profileKey, id)));
+  const results = await Promise.allSettled(ids.map((id) => trackWrite(recordWrong(profileKey, id))));
   return ids.filter((_, index) => results[index].status === 'rejected');
 }
 

@@ -1,10 +1,12 @@
-// Track B 정답 확인. 채점은 이미 불러온 문제 데이터로 화면에서 끝내고, 오답만 selfstudy RPC(recordWrong)로 기록한다.
+// Track B/C 정답 확인 (Track C 오답소탕도 같은 방식으로 푼다). 채점은 이미 불러온 문제 데이터로 화면에서 끝내고, 오답만 selfstudy RPC(recordWrong)로 기록한다.
 // - 정답: graded 로 만들고 해설을 공개한다. 오답 기록은 건드리지 않는다 (clearWrong 은 Track C 에서만).
 // - 오답: 그 보기를 제외하고 recordWrong 을 호출한다 (틀릴 때마다 wrong_count 누적).
 // 화면 채점과 DB 기록은 분리한다: 기록이 실패해도 학생의 풀이 흐름은 막지 않고, 실패한 기록은 다음 정답 확인 때 다시 시도한다.
 import { state, getCurrentQuestion } from './state.js';
 import { normalizeAnswerKey } from './utils.js';
 import { recordWrong } from './data/selfstudy.js';
+import { trackWrite } from './pending-writes.js';
+import { clearSolvedWrong } from './track-c-actions.js';
 import { renderChoiceStates, renderQuestionStatus } from './quiz-renderer.js';
 import { clearQuizFeedback, clearQuizSaveError, showQuizMessage, showQuizSaveError } from './view.js';
 
@@ -20,7 +22,7 @@ async function flushPendingWrongs() {
     while (pendingWrongs.length > 0) {
       const { profileKey, questionId } = pendingWrongs[0];
       try {
-        await recordWrong(profileKey, questionId);
+        await trackWrite(recordWrong(profileKey, questionId));
       } catch {
         break;
       }
@@ -40,7 +42,7 @@ async function saveWrong(questionId) {
   }
   checkingQuestionIds.add(questionId);
   try {
-    await recordWrong(profileKey, questionId);
+    await trackWrite(recordWrong(profileKey, questionId));
     if (pendingWrongs.length === 0) clearQuizSaveError();
   } catch (error) {
     pendingWrongs.push({ profileKey, questionId });
@@ -51,7 +53,7 @@ async function saveWrong(questionId) {
 }
 
 export async function checkTrackBAnswer() {
-  if (state.view !== 'quiz' || state.currentTrack !== 'B') return;
+  if (state.view !== 'quiz' || (state.currentTrack !== 'B' && state.currentTrack !== 'C')) return;
   const question = getCurrentQuestion();
   if (!question) return;
   const id = question.id;
@@ -75,6 +77,8 @@ export async function checkTrackBAnswer() {
   if (selectedKey === correctKey) {
     state.quiz.graded[id] = true;
     renderQuestionStatus(question);
+    // Track C: 정답을 맞힌 오답은 정리한다 (Track B 는 오답 기록을 건드리지 않는다).
+    if (state.currentTrack === 'C') void clearSolvedWrong(question);
     return;
   }
 

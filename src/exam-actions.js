@@ -6,6 +6,7 @@ import { fetchQuestions } from './data/questions.js';
 import { ensureProfile, readIdentity, validateIdentity } from './profile.js';
 import { isSessionBusy, refreshResumeCard, saveCurrentSession } from './session-actions.js';
 import { renderCurrentQuestion } from './quiz-renderer.js';
+import { refreshActiveWrongs, resetActiveWrongs, startTrackC } from './track-c-actions.js';
 import {
   clearQuizSaveError,
   clearSessionSaveError,
@@ -84,6 +85,19 @@ export async function startSelectedExam() {
   if (isStarting || isSessionBusy() || state.view !== 'lobby') return;
   clearStartMessage();
 
+  if (state.currentTrack === 'C') {
+    // 오답소탕: 남은 오답을 불러와 시작 (조건 확인은 track-c-actions 가 처리)
+    isStarting = true;
+    setStartLoading(true);
+    try {
+      await startTrackC();
+    } finally {
+      isStarting = false;
+      setStartLoading(false);
+    }
+    return;
+  }
+
   const check = checkStartConditions();
   if (check.message) {
     showStartMessage(check.message);
@@ -98,7 +112,10 @@ export async function startSelectedExam() {
     // 1) 프로필 (실패하면 문제를 불러오지 않는다)
     const profile = await ensureProfile({ studentNo: snapshot.studentNo, studentName: snapshot.studentName });
     if (requestId !== startRequestId || !isSameSnapshot(snapshot)) return;
-    if (state.profile?.profileKey !== profile.profileKey) state.session = null; // 다른 학생의 세션은 이어받지 않는다
+    if (state.profile?.profileKey !== profile.profileKey) {
+      state.session = null; // 다른 학생의 세션/오답 수는 이어받지 않는다
+      resetActiveWrongs();
+    }
     state.profile = profile;
 
     // 2) 문제
@@ -162,4 +179,5 @@ export function returnToLobby() {
   clearSessionSaveError();
   showLobby();
   void refreshResumeCard(); // DB 의 최근 세션은 그대로 두고 이어하기 카드를 다시 보인다
+  void refreshActiveWrongs(); // 방금 생기거나 정리된 오답이 Track C 카드/남은 오답 수에 반영되게 다시 읽는다
 }
