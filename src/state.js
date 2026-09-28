@@ -24,9 +24,15 @@ function createInitialQuizState() {
     submission: null, // 제출 결과 요약 (track-a-actions.js 가 채운다)
     // 이 문제 세트를 시작한 조건 (최근 세션 저장에 쓴다). { track, licenseClass, subject, subjects, year, examRound }
     origin: null,
-    // Track C: 정답을 맞힌 문제의 오답 정리(clearWrong) 상태 { [questionId]: 'pending' | 'done' | 'failed' }, 마무리 결과 { remaining } | { error }
+    // Track C: 이번 오답소탕 회차가 어느 급수(3급/4급)인지. 정답을 맞힌 문제의 오답 정리(clearWrong) 상태
+    // { [questionId]: 'pending' | 'done' | 'failed' }, 마무리 결과
+    // { licenseClass, remainingInClass, remainingTotal, diagnosisContext?, remainingInTopic? } | { error }
+    licenseClass: null,
     clearStatus: {},
     completion: null,
+    // 내 학습 진단의 "내가 틀린 문제 다시풀기"로 들어온 회차만 { subject, topic } (완료 문구에 학습영역 이름을 보여주는 데만 쓴다).
+    // 일반 오답소탕(급수만 선택)이나 급수 전체 재시작(restartTrackC)에서는 null.
+    diagnosisContext: null,
     reviewing: false, // 제출 후 결과 목록이 아니라 오답 한 문제의 복습 화면을 보고 있으면 true
   };
 }
@@ -48,8 +54,27 @@ function createInitialState() {
     quiz: createInitialQuizState(),
     wrongPool: {
       activeQuestionIds: [], // 이 학생의 active 오답 questions.id (RPC 순서: 처음 틀린 순)
+      // 위 id 들의 실제 문제 행 + wrongCount, 같은 순서로. getActiveWrongs + fetchQuestionsByIds 를 한 번만 불러서
+      // Track C 급수 집계와 "내 학습 진단"(급수/과목/개념 집계)이 함께 쓴다 (중복 조회 방지).
+      activeQuestions: [],
+      // 급수(license_class)별 active 오답 개수. DB 에는 급수를 저장하지 않고, 조회한 questions 행의
+      // license_class 로 화면에서만 계산한다 ({ [licenseClass]: count }).
+      countsByLicense: {},
+      selectedLicenseClass: null, // Track C 에서 지금 고른 급수 (세션에는 저장하지 않는다)
+      // 남은 오답이 한 급수뿐일 때 자동으로 그 급수를 선택해도 되는지. 오답소탕을 한 회차 마치면 꺼지고
+      // (학생이 매번 직접 급수를 고른다), 학생이 바뀌면(resetActiveWrongs) 다시 켜진다.
+      autoSelectAllowed: true,
       profileKey: null, // 위 목록이 어느 프로필의 것인지
       loaded: false, // 한 번이라도 DB 에서 읽었는지 (프로필 확인 전에는 false)
+    },
+    // "내 학습 진단" 로비 패널의 화면 전용 선택 상태 (DB 에 저장하지 않는다, wrongPool 이 바뀌면 다시 계산한다).
+    diagnosis: {
+      profileKey: null, // 이 선택이 어느 프로필 것인지 (다른 프로필이면 전부 초기화한다)
+      expanded: false, // 상세 패널(급수->과목->학습영역)이 열려 있는지
+      selectedLicenseClass: null,
+      selectedSubject: null,
+      selectedTopic: null, // 선택한 learning_topic (동률 포함 최대 5개 중 하나 - utils.js pickPriorityLearningTopics)
+      message: '', // 진단 패널 안의 작은 오류 안내 (관련 문제 조회 실패 등)
     },
     // 학생의 최근 학습 세션 1개 (DB selfstudy_sessions 의 사본). 답안은 저장하지 않는다.
     // { trackType, licenseClass, subject, selectedSubjects, year, examRound, questionIds,

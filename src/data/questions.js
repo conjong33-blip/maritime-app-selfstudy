@@ -108,6 +108,35 @@ export async function fetchQuestionsByIds(ids) {
   return unwrap(await query, 'questions id 조회');
 }
 
+// 관련 문제 학습 조회 상한 (전체 문제은행을 실수로 가져오지 않게 한다). 호출하는 쪽이 이 중 최종 최대 5개만 쓴다.
+const RELATED_QUESTIONS_LIMIT = 50;
+
+// license_class + subject + learning_topic 이 모두 일치하는 문제를 조회한다 (내 학습 진단의 "관련 문제 학습"용, SELECT only).
+// public.selfstudy_question_topics 를 questions!inner 로 이너 조인해서 세 조건을 한 번에 정확히 건다 - !inner 없이
+// dot 표기(questions.xxx=eq...)만 쓰면 매칭 안 되는 행도 embedded 객체만 null 로 비워진 채 parent(questions) row 는
+// 그대로 남는다(실제 Supabase 응답으로 확인됨). learning_topic 이름만으로는 검색하지 않는다 - 같은 이름이 다른
+// 급수/과목에도 있을 수 있어서 license_class+subject 까지 함께 걸어야 한다.
+// 최근 연도가 먼저 오도록 정렬한다(무작위 없음). active 오답 제외와 최종 개수 제한은 호출하는 쪽이 한다.
+export async function fetchQuestionsByLearningTopic({ licenseClass, subject, learningTopic, limit = RELATED_QUESTIONS_LIMIT } = {}) {
+  const grade = requiredText(licenseClass, 'licenseClass');
+  const subj = requiredText(subject, 'subject');
+  const topic = requiredText(learningTopic, 'learningTopic');
+  const query = getSupabaseClient()
+    .from('questions')
+    .select(`${QUESTION_SELECT},selfstudy_question_topics!inner(learning_topic)`)
+    .eq('license_class', grade)
+    .eq('subject', subj)
+    .eq('selfstudy_question_topics.learning_topic', topic)
+    .order('year', { ascending: false })
+    .order('exam_round', { ascending: true })
+    .order('question_no', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(Math.min(limit, MAX_QUESTIONS));
+  const rows = unwrap(await query, '학습영역별 문제 조회');
+  // join 에 쓴 selfstudy_question_topics 임베드 필드는 조회 조건일 뿐, 문제 행 자체에는 남기지 않는다.
+  return rows.map(({ selfstudy_question_topics, ...question }) => question);
+}
+
 // 서버의 max-rows 설정과 관계없이 전체를 가져오도록 count 를 기준으로 페이지를 이어서 읽는다.
 async function fetchAllRows(buildQuery, context) {
   const rows = [];

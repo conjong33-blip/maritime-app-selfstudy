@@ -1,38 +1,56 @@
-// Track C(오답소탕) 화면 표시 (state -> DOM): 로비의 "남은 오답" 진단 카드, 풀이 화면의 진행/정리 실패/완료 안내.
+// Track C(오답소탕) 화면 표시 (state -> DOM): 로비의 급수 선택 버튼, 풀이 화면의 진행/정리 실패/완료 안내.
+// 로비의 "내 학습 진단" 요약/상세 카드는 diagnosis-view.js 가 맡는다(이전에는 이 파일의 자가진단 카드였다).
 // 상태를 바꾸지 않고 DB 에도 접근하지 않는다. 문제 본문/보기/해설은 공용 quiz-renderer.js 가 그린다.
+import { config } from './config.js';
 import { state } from './state.js';
 
 const byId = (id) => document.getElementById(id);
 const setHidden = (id, hidden) => byId(id)?.classList.toggle('hidden', hidden);
 
-const DIAG_BASE = 'mb-6 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn border ';
-const DIAG_ACTIVE = DIAG_BASE + 'bg-indigo-950/40 border-indigo-500/40';
-const DIAG_CLEAR = DIAG_BASE + 'bg-emerald-950/40 border-emerald-500/40';
+// ---------------------------------------------------------------------
+// 급수 선택 버튼 (로비 필터 영역, Track C 카드를 골랐을 때만 보인다)
+// ---------------------------------------------------------------------
+const LICENSE_IDLE =
+  'bg-[#0B132B] border border-[#3A506B] hover:border-rose-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200';
+const LICENSE_SELECTED =
+  'bg-rose-950/60 border-2 border-rose-500 p-3 rounded-xl text-xs font-black text-rose-300 shadow-md shadow-rose-500/10 transition-all duration-200';
+const LICENSE_DISABLED =
+  'bg-[#0B132B]/40 border border-[#3A506B]/30 p-3 rounded-xl text-xs font-bold text-slate-600 opacity-50 cursor-not-allowed transition-all duration-200';
 
-// 로비: 이 학생의 소탕할 오답 수 (V65 자가진단 카드). 프로필을 확인하기 전에는 보이지 않는다.
-export function renderActiveWrongSummary() {
-  const card = byId('self-diagnosis-card');
-  if (!card) return;
-  const { loaded, activeQuestionIds } = state.wrongPool;
-  if (!state.profile || !loaded) {
-    card.classList.add('hidden');
-    return;
-  }
-  const count = activeQuestionIds.length;
-  byId('diag-student-id').innerText = state.profile.studentNo;
-  const status = byId('diag-wrong-status');
-  const message = byId('diag-message');
-  if (count > 0) {
-    card.className = DIAG_ACTIVE;
-    status.innerText = `${count}개 남음`;
-    status.className = 'text-rose-400 font-extrabold';
-    message.innerText = `"현재 격파를 기다리는 오답이 [ ${count} ] 남았습니다! 하나씩 깨트려봐요!"`;
+// 표시 순서: 앱이 아는 급수(config.licenseClasses)를 먼저, 그 외 값(예상 밖 license_class)은 뒤에 그대로 보여 준다(무시하지 않는다).
+function licenseEntries() {
+  const counts = state.wrongPool.countsByLicense ?? {};
+  const known = config.licenseClasses.map((licenseClass) => [licenseClass, counts[licenseClass] ?? 0]);
+  const extraKeys = Object.keys(counts)
+    .filter((key) => !config.licenseClasses.includes(key))
+    .sort();
+  return [...known, ...extraKeys.map((key) => [key, counts[key]])];
+}
+
+function buildLicenseButton(licenseClass, count, selected) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  const disabled = count === 0;
+  button.className = disabled ? LICENSE_DISABLED : selected ? LICENSE_SELECTED : LICENSE_IDLE;
+  button.textContent = `${licenseClass} · ${count}문제`;
+  if (disabled) {
+    button.disabled = true;
   } else {
-    card.className = DIAG_CLEAR;
-    status.innerText = '0개 남음';
-    status.className = 'text-emerald-400 font-extrabold';
-    message.innerText = '"소탕할 오답이 없습니다. 모의고사나 과목별 학습을 먼저 진행해 주세요!"';
+    button.dataset.action = 'select-track-c-license';
+    button.dataset.value = licenseClass;
   }
+  return button;
+}
+
+// Track C 를 고르지 않았으면 아무것도 하지 않는다 (보이고 숨기는 것은 로비의 공통 트랙 옵션 토글이 담당한다).
+export function renderTrackCFilter() {
+  const buttons = byId('track-c-license-buttons');
+  const hint = byId('track-c-license-hint');
+  if (!buttons || !hint) return;
+  if (state.currentTrack !== 'C') return;
+  const entries = licenseEntries();
+  buttons.replaceChildren(...entries.map(([licenseClass, count]) => buildLicenseButton(licenseClass, count, licenseClass === state.wrongPool.selectedLicenseClass)));
+  hint.innerText = state.wrongPool.selectedLicenseClass ? '' : '오답소탕할 급수를 선택해 주세요.';
 }
 
 function retryButton(action, label) {
@@ -56,7 +74,8 @@ function actionButton(action, label, primary) {
   return button;
 }
 
-// 풀이 화면 안내: 진행 상황(시험 점수 없음), 정리(clearWrong) 진행/실패, 마무리 결과. Track C 가 아니면 숨긴다.
+// 풀이 화면 안내: 진행 상황(시험 점수 없음, 지금 급수 표시), 정리(clearWrong) 진행/실패, 마무리 결과.
+// Track C 가 아니면 숨긴다.
 export function renderTrackCStatus() {
   const panel = byId('track-c-panel');
   if (!panel) return;
@@ -65,10 +84,11 @@ export function renderTrackCStatus() {
     return;
   }
   panel.classList.remove('hidden');
-  const { questions, clearStatus, currentIndex, completion } = state.quiz;
+  const { questions, clearStatus, currentIndex, completion, licenseClass } = state.quiz;
   const total = questions.length;
   const solved = questions.filter((question) => clearStatus[question.id] === 'done').length;
-  byId('track-c-progress').innerText = `남은 오답 ${total - solved}문제 · 해결 ${solved} / ${total}`;
+  const prefix = licenseClass ? `${licenseClass} 오답소탕 · ` : '';
+  byId('track-c-progress').innerText = `${prefix}남은 오답 ${total - solved}문제 · 해결 ${solved} / ${total}`;
 
   const notice = byId('track-c-clear-notice');
   const current = questions[currentIndex];
@@ -97,14 +117,29 @@ export function renderTrackCStatus() {
   text.className = 'text-xs font-semibold text-slate-100 leading-relaxed';
   const buttons = document.createElement('div');
   buttons.className = 'flex items-center gap-2';
+  // 진단의 "내가 틀린 문제 다시풀기"로 들어온 회차이고, 그 학습영역의 오답을 정말 다 풀었으면 문구에 학습영역 이름을 더해 준다.
+  // 완료/재시작 버튼을 고르는 기준(remainingTotal/remainingInClass, 급수 전체)은 그대로 두고 문구만 바꾼다.
+  const topicDone = Boolean(completion.diagnosisContext) && completion.remainingInTopic === 0;
+  const topicLabel = completion.diagnosisContext?.topic;
   if (completion.error) {
     text.textContent = '남은 오답 수를 확인하지 못했습니다. 잠시 후 다시 확인해 주세요.';
     buttons.append(actionButton('finish-track-c', '다시 확인', true), actionButton('logout-to-lobby', '대기실로', false));
-  } else if (completion.remaining === 0) {
-    text.textContent = '오답소탕 완료! 소탕할 오답이 더 이상 남아 있지 않습니다. ⚓';
+  } else if (completion.remainingTotal === 0) {
+    // 모든 급수를 통틀어 active 오답이 0 일 때만 "전체 완료" 로 본다.
+    text.textContent = topicDone
+      ? `${topicLabel} 틀린 문제 복습 완료! 오답소탕도 모두 끝났습니다. ⚓`
+      : '오답소탕 완료! 소탕할 오답이 더 이상 남아 있지 않습니다. ⚓';
+    buttons.append(actionButton('logout-to-lobby', '대기실로 돌아가기', true));
+  } else if (completion.remainingInClass === 0) {
+    // 이번에 풀던 급수만 완료. 다른 급수가 남아 있어도 "전체 완료"라고 하지 않는다.
+    text.textContent = topicDone
+      ? `${topicLabel} 틀린 문제 복습 완료! (다른 급수에 아직 ${completion.remainingTotal}개 남았습니다)`
+      : `${completion.licenseClass} 오답소탕 완료! (다른 급수에 아직 ${completion.remainingTotal}개 남았습니다)`;
     buttons.append(actionButton('logout-to-lobby', '대기실로 돌아가기', true));
   } else {
-    text.textContent = `아직 소탕할 오답이 ${completion.remaining}개 남아 있습니다.`;
+    text.textContent = topicDone
+      ? `${topicLabel} 틀린 문제 복습 완료! (${completion.licenseClass}에 다른 오답 ${completion.remainingInClass}개 남았습니다)`
+      : `${completion.licenseClass} 오답소탕: 아직 ${completion.remainingInClass}개 남아 있습니다.`;
     buttons.append(actionButton('restart-track-c', '남은 오답 다시 소탕하기', true), actionButton('logout-to-lobby', '대기실로', false));
   }
   box.replaceChildren(text, buttons);

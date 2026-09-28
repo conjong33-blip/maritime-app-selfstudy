@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { state, setCurrentTrack } from './state.js';
 import { fetchQuestionMetadata } from './data/questions.js';
 import { commonCombinations, resolveFilterSelection } from './utils.js';
+import { renderTrackCFilter } from './track-c-view.js';
 import { hideConnectionError, showConnectionError } from './view.js';
 
 // V65 와 같은 클래스 문자열
@@ -51,7 +52,7 @@ const TRACKS = {
     selected: ' border-rose-500 shadow-lg shadow-rose-500/10',
     badgeText: '오답소탕',
     badgeClass: 'px-3 py-1 text-xs font-bold rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400',
-    optionsId: null,
+    optionsId: 'track-c-options', // 급수(3급/4급) 선택 버튼
     yearSelectId: null,
     roundSelectId: null,
   },
@@ -81,7 +82,7 @@ function renderTracks() {
   const track = state.currentTrack;
   if (!TRACKS[track]) return;
   for (const [key, def] of Object.entries(TRACKS)) {
-    if (key === 'C') renderTrackCCard();
+    if (key === 'C') renderTrackCLobby();
     else byId(def.cardId).className = CLASSES.trackBase + def.hover + (key === track ? def.selected : DIMMED_CARD);
     if (def.optionsId) byId(def.optionsId).classList.toggle('hidden', key !== track);
   }
@@ -125,7 +126,14 @@ export function deselectTrackCIfEmpty() {
   setCurrentTrack(null);
   byId('filters-container').classList.add('hidden');
   for (const key of ['A', 'B']) byId(TRACKS[key].cardId).className = CLASSES.trackBase + TRACKS[key].hover;
+  renderTrackCLobby();
+}
+
+// Track C 카드 + 급수 선택 필터를 함께 다시 그린다 (wrongPool 이 바뀔 때마다 이 하나만 부르면 된다).
+// 급수 자동 선택 정책은 track-c-actions.js 의 applyActive 가 state.wrongPool 을 만들 때 결정한다.
+export function renderTrackCLobby() {
   renderTrackCCard();
+  renderTrackCFilter();
 }
 
 // Track A 과목 체크박스 표시. state.filters.subjects 를 그대로 보여 준다 (DOM 이 기준이 아니다).

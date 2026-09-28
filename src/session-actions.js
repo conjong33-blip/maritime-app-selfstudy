@@ -127,12 +127,16 @@ export function clearRecentSession() {
 // ---------------------------------------------------------------------
 // 이어하기 카드
 // ---------------------------------------------------------------------
+// compact 배너용 2단 표시. main 은 항상 보이고(Track/급수/과목/위치), detail(연도/회차)은 좁은 화면에서 CSS 로 숨길 수 있다.
 function describeSession(session) {
   const total = session.questionIds?.length ?? 0;
   const position = Math.min((session.currentQuestionIndex ?? 0) + 1, Math.max(total, 1));
-  const subjects = session.trackType === 'A' ? (session.selectedSubjects ?? []).join(' · ') : (session.subject ?? '');
-  const track = session.trackType === 'A' ? '모의고사(Track A)' : '과목 선택(Track B)';
-  return `${track} · ${session.licenseClass} ${subjects} · ${session.year}년 ${session.examRound} · ${position} / ${total} 문제`;
+  const subjects = session.trackType === 'A' ? (session.selectedSubjects ?? []).join('·') : (session.subject ?? '');
+  const track = session.trackType === 'A' ? 'Track A' : 'Track B';
+  return {
+    main: `${track} · ${session.licenseClass} ${subjects} · ${position}/${total}`,
+    detail: `${session.year}년 ${session.examRound}`,
+  };
 }
 
 // Track A/B 이고 이어갈 문제 세트가 있는 세션만 카드로 보여 준다 (Track C 세션 등은 이번 단계에서 다루지 않는다).

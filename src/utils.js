@@ -337,3 +337,101 @@ export function getHelperHtml(question) {
 export function getExplanationWithHelperHtml(question) {
   return getExplanationBlocksHtml(question) + getHelperHtml(question);
 }
+
+// ---------------------------------------------------------------------
+// "내 학습 진단" 집계 (순수 함수). state.wrongPool.activeQuestions(지금 안 풀린 오답의 문제 행 + wrongCount)만 본다.
+// cleared 오답이나 정답 이력은 절대 보지 않는다 - 성적/취약도 분석이 아니라 "지금 무엇이 남았는가" 기준의 복습 방향 제시다.
+// 복잡한 취약도 알고리즘은 쓰지 않는다: 1차는 개수, 동률이면 wrong_count 합, 그래도 동률이면 문자열 순서.
+// ---------------------------------------------------------------------
+function normalizeLearningTopic(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null; // null/undefined/''/공백(매핑 없음) -> 진단 대상에서 제외
+}
+
+// 선택한 급수 안에서 과목별 active 오답 개수. subjectOrder(표준 과목 순서)에 있는 과목을 먼저, 그 외는 가나다순으로 뒤에 붙인다.
+export function groupActiveQuestionsBySubject(activeQuestions, licenseClass, subjectOrder) {
+  const bySubject = new Map();
+  for (const question of activeQuestions) {
+    if (question.license_class !== licenseClass) continue;
+    if (!bySubject.has(question.subject)) bySubject.set(question.subject, { subject: question.subject, count: 0 });
+    bySubject.get(question.subject).count += 1;
+  }
+  const known = subjectOrder.filter((subject) => bySubject.has(subject)).map((subject) => bySubject.get(subject));
+  const extraKeys = [...bySubject.keys()].filter((subject) => !subjectOrder.includes(subject)).sort((a, b) => a.localeCompare(b, 'ko'));
+  return [...known, ...extraKeys.map((subject) => bySubject.get(subject))];
+}
+
+// 선택한 급수+과목 안에서 learning_topic 별 active 오답을 묶는다. 매핑이 없는 문제(question.learningTopic 이 비었거나
+// 공백뿐 - track-c-actions.js 의 loadActiveWithQuestions 가 selfstudy_question_topics 조회 실패/누락 시 null 로 남긴다)는
+// 별도로 센다(withoutTopic) - 목록에서는 빠지지만 존재 자체가 사라지지는 않는다(오답 기록 자체는 그대로 유지).
+// concept_tag 로 되돌리는 fallback 은 하지 않는다 - 매핑이 없으면 없는 대로 취급한다.
+// 우선순위: 문제 수 desc -> wrong_count 합 desc -> 문자열(ko-KR).
+export function groupActiveQuestionsByLearningTopic(activeQuestions, licenseClass, subject) {
+  const scoped = activeQuestions.filter((question) => question.license_class === licenseClass && question.subject === subject);
+  const byTopic = new Map();
+  let withoutTopic = 0;
+  for (const question of scoped) {
+    const topic = normalizeLearningTopic(question.learningTopic);
+    if (!topic) {
+      withoutTopic += 1;
+      continue;
+    }
+    if (!byTopic.has(topic)) byTopic.set(topic, { topic, count: 0, wrongCountSum: 0 });
+    const row = byTopic.get(topic);
+    row.count += 1;
+    row.wrongCountSum += Number.isFinite(question.wrongCount) ? question.wrongCount : 0;
+  }
+  const topics = [...byTopic.values()].sort(
+    (a, b) => b.count - a.count || b.wrongCountSum - a.wrongCountSum || a.topic.localeCompare(b.topic, 'ko'),
+  );
+  return { topics, withoutTopic, total: scoped.length };
+}
+
+// "우선 복습 영역" 표시 목록: 기본 3개, 3위와 count(active 오답 수)가 같은 topic 은 동률로 포함, 최대 5개.
+// topics 는 이미 groupActiveQuestionsByLearningTopic 이 count desc -> wrongCountSum desc -> 이름순으로 정렬해 둔 것을 받는다.
+// "전체 보기" 토글 없이 이 함수 하나의 결과만 그대로 보여준다 (다른 topic 으로 채워 넣는 padding 은 하지 않는다).
+const PRIORITY_BASE_COUNT = 3;
+const PRIORITY_MAX_COUNT = 5;
+export function pickPriorityLearningTopics(topics) {
+  if (topics.length <= PRIORITY_BASE_COUNT) return topics;
+  const cutoff = topics[PRIORITY_BASE_COUNT - 1].count;
+  const result = [];
+  for (const row of topics) {
+    if (result.length < PRIORITY_BASE_COUNT) {
+      result.push(row);
+      continue;
+    }
+    if (result.length >= PRIORITY_MAX_COUNT || row.count !== cutoff) break;
+    result.push(row);
+  }
+  return result;
+}
+
+// 로비 요약의 "우선 복습" 한 곳(급수+과목 조합). 문제 수가 가장 많은 조합, 동률이면 licenseOrder -> subjectOrder 순.
+// active 오답이 하나도 없으면 null.
+export function pickPriorityReview(activeQuestions, licenseOrder, subjectOrder) {
+  const counts = new Map(); // "license\u0000subject" -> count
+  for (const question of activeQuestions) {
+    const key = `${question.license_class}\u0000${question.subject}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let best = null;
+  for (const [key, count] of counts) {
+    const [license, subject] = key.split('\u0000');
+    const licenseRank = licenseOrder.indexOf(license);
+    const subjectRank = subjectOrder.indexOf(subject);
+    const candidate = {
+      license,
+      subject,
+      count,
+      licenseRank: licenseRank === -1 ? Infinity : licenseRank,
+      subjectRank: subjectRank === -1 ? Infinity : subjectRank,
+    };
+    const better =
+      !best ||
+      candidate.count > best.count ||
+      (candidate.count === best.count && candidate.licenseRank < best.licenseRank) ||
+      (candidate.count === best.count && candidate.licenseRank === best.licenseRank && candidate.subjectRank < best.subjectRank);
+    if (better) best = candidate;
+  }
+  return best;
+}

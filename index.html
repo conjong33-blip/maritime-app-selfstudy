@@ -82,6 +82,59 @@ class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 te
 </div>
 </div>
 </div>
+<!-- COMPACT RESUME BANNER (session 이 있을 때만 보인다) -->
+<div id="resume-prompt-card" class="hidden mb-3 bg-emerald-950/30 border border-emerald-500/30 rounded-xl px-3 py-2 flex items-center justify-between gap-2 animate-fadeIn">
+<div class="min-w-0">
+<p class="text-[10px] font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1">
+<i class="fa-solid fa-clock-rotate-left"></i> 이어서 공부하기
+</p>
+<p class="text-xs font-bold text-white truncate">
+<span id="resume-session-info"></span>
+<span id="resume-session-detail" class="hidden sm:inline text-slate-400 font-medium"></span>
+</p>
+</div>
+<div class="flex items-center gap-1.5 shrink-0">
+<button data-action="resume-session" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-lg text-[11px] transition whitespace-nowrap">이어하기</button>
+<button data-action="clear-and-start-fresh" class="text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap">새로 시작</button>
+</div>
+</div>
+<!-- MY LEARNING DIAGNOSIS: compact summary (자가진단 리포트를 발전시킨 영역, 급수/과목/개념 상세는 아래 detail panel) -->
+<div id="self-diagnosis-card" class="hidden mb-3 bg-indigo-950/30 border border-indigo-500/30 rounded-xl px-3.5 py-2.5 space-y-1 animate-fadeIn">
+<div class="flex items-center justify-between gap-2">
+<span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5"><i class="fa-solid fa-clipboard-list"></i> 내 학습 진단</span>
+<button type="button" data-action="toggle-diagnosis-detail" id="diagnosis-toggle-btn" class="text-indigo-300 hover:text-indigo-200 text-[11px] font-bold underline underline-offset-2">자세히 보기</button>
+</div>
+<p id="diagnosis-summary-line" class="text-[11px] text-slate-300 font-semibold leading-relaxed"></p>
+</div>
+<!-- MY LEARNING DIAGNOSIS: detail panel (급수 -> 과목 -> 우선 복습 영역(오답 기록 기준) -> 학습 시작) -->
+<div id="diagnosis-detail-panel" class="hidden mb-6 bg-[#0B132B] border border-indigo-500/30 rounded-2xl p-4 space-y-4 text-xs animate-fadeIn">
+<div class="flex items-center justify-between">
+<span class="font-bold text-indigo-300">내 학습 진단</span>
+<button type="button" data-action="close-diagnosis-detail" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-xmark"></i></button>
+</div>
+<p id="diagnosis-empty-message" class="hidden text-slate-400 italic"></p>
+<div class="space-y-2">
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">급수</label>
+<div id="diagnosis-license-buttons" class="grid grid-cols-2 gap-2"></div>
+</div>
+<div id="diagnosis-subject-step" class="hidden space-y-2">
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">과목</label>
+<div id="diagnosis-subject-list" class="space-y-1.5"></div>
+</div>
+<div id="diagnosis-topic-step" class="hidden space-y-2">
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide"><span id="diagnosis-topic-subject-label"></span> · 우선 복습 영역 <span class="normal-case font-semibold text-slate-500">(오답 기록 기준)</span></label>
+<div id="diagnosis-topic-list" class="space-y-1.5"></div>
+</div>
+<div id="diagnosis-topic-actions" class="hidden space-y-2 border-t border-[#3A506B]/40 pt-3">
+<p id="diagnosis-selected-topic-label" class="text-slate-300 font-semibold"></p>
+<div class="flex flex-col sm:flex-row gap-2">
+<button type="button" data-action="start-diagnosis-retry" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black px-3 py-2 rounded-lg text-[11px] transition">내가 틀린 문제 다시풀기</button>
+<button type="button" data-action="start-related-learning" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3 py-2 rounded-lg text-[11px] transition">관련 문제 학습하기</button>
+</div>
+<p class="text-[10px] text-slate-500">같은 학습영역이 다른 문제에서 어떻게 출제되는지 확인해보세요.</p>
+</div>
+<p id="diagnosis-message" role="alert" class="hidden text-rose-300 font-semibold"></p>
+</div>
 <!-- Grade Level Class Selection Tab -->
 <div class="mb-6 bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/40">
 <label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-2">응시 자격 (급수) 선택</label>
@@ -93,35 +146,6 @@ class="py-3 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-eme
 <button id="btn-class-4" data-action="select-license-class" data-value="4급"
 class="py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132B] text-slate-400 hover:border-emerald-500/60 transition-all duration-200">
 4급 기관사 자격
-</button>
-</div>
-</div>
-<!-- SELF-DIAGNOSIS CARD -->
-<div id="self-diagnosis-card" class="hidden mb-6 bg-indigo-950/40 border border-indigo-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn">
-<div class="flex items-center gap-2 text-indigo-400">
-<i class="fa-solid fa-square-poll-vertical text-lg"></i>
-<span class="font-bold text-sm"> <span id="diag-student-id" class="text-white"></span> 학생 실시간 자가진단 리포트</span>
-</div>
-<div class="text-slate-300 leading-relaxed font-semibold">
-• 정복해야 할 오답 문항: <span id="diag-wrong-status" class="text-rose-400 font-extrabold">0개 남음</span>
-</div>
-<p id="diag-message" class="text-slate-400 italic font-medium"></p>
-</div>
-<!-- INTERACTIVE RESUME SESSION PROMPT CARD -->
-<div id="resume-prompt-card" class="hidden mb-6 bg-emerald-950/40 border border-emerald-500/40 p-5 rounded-2xl text-xs flex flex-col gap-3 animate-fadeIn">
-<div class="flex items-center gap-2 text-emerald-400">
-<i class="fa-solid fa-clock-rotate-left text-lg"></i>
-<span class="font-bold text-sm">중단된 학습 기록 감지!</span>
-</div>
-<p class="text-slate-300 leading-relaxed">
-<span id="resume-student-id" class="hidden"></span>이전에 학습하던 <span id="resume-session-info" class="text-white font-bold text-xs"></span> 데이터가 존재합니다. 이어서 풀어나가시겠습니까?
-</p>
-<div class="flex gap-2.5 mt-1">
-<button data-action="resume-session" class="flex-1 bg-gradient-to-r from-[#5BC0BE] to-teal-600 hover:from-[#5BC0BE] hover:to-[#5BC0BE] text-slate-950 font-black py-2.5 rounded-xl text-xs transition duration-200 shadow-md">
-⚓ 이어서 학습하기
-</button>
-<button data-action="clear-and-start-fresh" class="bg-[#3A506B]/30 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-[#3A506B]/40 hover:border-rose-500/40 px-4 py-2.5 rounded-xl text-xs transition duration-200">
-↺ 아니오
 </button>
 </div>
 </div>
@@ -233,6 +257,12 @@ class="py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132
 </select>
 </div>
 </div>
+</div>
+<!-- Track C Options -->
+<div id="track-c-options" class="hidden space-y-3">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1">오답소탕 급수</label>
+<div id="track-c-license-buttons" class="grid grid-cols-2 gap-3"></div>
+<p id="track-c-license-hint" class="text-[11px] text-slate-500"></p>
 </div>
 <!-- Start Exam validation message (입력 누락 안내) -->
 <p id="start-message" role="alert" class="hidden bg-rose-950/40 border border-rose-600/40 text-rose-200 px-4 py-3 rounded-xl text-xs font-semibold"></p>

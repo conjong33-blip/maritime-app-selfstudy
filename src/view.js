@@ -102,9 +102,11 @@ export function clearSessionSaveError() {
   clearMessage('session-save-message');
 }
 
-// 로비의 "이어서 학습하기" 카드 (V65 resume-prompt-card)
-export function showResumeCard(infoText) {
-  byId('resume-session-info').innerText = infoText;
+// 로비의 "이어서 학습하기" 배너 (V65 resume-prompt-card, compact 형태).
+// main: Track/급수/과목/위치 ("Track B · 4급 기관2 · 12/25"), detail: 연도/회차(좁은 화면에서는 CSS 로 숨긴다).
+export function showResumeCard({ main, detail }) {
+  byId('resume-session-info').innerText = main;
+  byId('resume-session-detail').innerText = detail;
   byId('resume-prompt-card').classList.remove('hidden');
 }
 

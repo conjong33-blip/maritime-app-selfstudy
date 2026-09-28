@@ -5,6 +5,7 @@ import { state, resetQuizState } from './state.js';
 import { fetchQuestions } from './data/questions.js';
 import { ensureProfile, readIdentity, validateIdentity } from './profile.js';
 import { isSessionBusy, refreshResumeCard, saveCurrentSession } from './session-actions.js';
+import { syncLobbyFromState } from './lobby-actions.js';
 import { renderCurrentQuestion } from './quiz-renderer.js';
 import { refreshActiveWrongs, resetActiveWrongs, startTrackC } from './track-c-actions.js';
 import {
@@ -178,6 +179,10 @@ export function returnToLobby() {
   clearQuizSaveError();
   clearSessionSaveError();
   showLobby();
+  // 트랙 카드/필터 표시를 지금 state.currentTrack 기준으로 다시 맞춘다. 보통은 들어갈 때와 같은 트랙이라
+  // 그대로 다시 그리는 것뿐이지만(변화 없음), "내 학습 진단"의 관련 문제 학습처럼 로비에서 직접 고른 필터
+  // 없이 트랙이 바뀌는 경우에도 로비가 항상 실제 선택과 어긋나지 않게 한다.
+  void syncLobbyFromState();
   void refreshResumeCard(); // DB 의 최근 세션은 그대로 두고 이어하기 카드를 다시 보인다
-  void refreshActiveWrongs(); // 방금 생기거나 정리된 오답이 Track C 카드/남은 오답 수에 반영되게 다시 읽는다
+  void refreshActiveWrongs(); // 방금 생기거나 정리된 오답이 Track C 카드/남은 오답 수/진단에 반영되게 다시 읽는다
 }
