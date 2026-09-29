@@ -93,6 +93,40 @@ class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 te
 <button type="button" id="student-verify-btn" data-action="verify-student" class="bg-[#5BC0BE] hover:bg-[#4aa9a7] text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition">확인</button>
 </div>
 </div>
+<!-- "교사 관리" 진입점: 학생용 확인 버튼보다 눈에 띄지 않게 - 작은 텍스트 링크로만 둔다 -->
+<div class="text-center mt-4">
+<button type="button" data-action="admin-open-pin" class="text-[10px] text-slate-500 hover:text-slate-400 transition underline underline-offset-2">교사 관리</button>
+</div>
+</div>
+
+<!-- ===== STAGE B-ADMIN: 교사 관리 (PIN 화면 / 사용자 관리 목록) - state.admin.screen 이 'closed' 가
+     아닐 때만 보이고, 그 동안은 STAGE A/B(학생 확인/학습 홈)를 전부 숨긴다(view.js 의 renderStudentVerification
+     이 이 조건을 함께 본다). 새 라우터를 만들지 않고 기존 SPA show/hide 방식을 그대로 따른다. -->
+<div id="teacher-admin-screen" class="hidden">
+<!-- PIN 입력 -->
+<div id="teacher-pin-screen" class="hidden max-w-md mx-auto bg-[#0B132B]/60 border border-[#3A506B]/40 rounded-2xl p-5 md:p-6">
+<h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2"><i class="fa-solid fa-user-shield text-[#5BC0BE]"></i> 교사 관리</h2>
+<div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40 mb-3">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">PIN 입력</label>
+<input type="password" id="admin-pin-input" data-action="admin-pin-confirm" maxlength="20" placeholder="PIN"
+class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 px-4 text-white placeholder-slate-500 font-extrabold tracking-widest text-lg focus:outline-none focus:border-[#5BC0BE] transition">
+</div>
+<p id="admin-pin-error" class="hidden text-rose-300 text-xs font-semibold mb-3"></p>
+<div class="flex items-center justify-between gap-2">
+<button type="button" data-action="admin-back-to-lobby" class="text-[11px] font-bold text-slate-400 hover:text-slate-300 transition">대기실로 돌아가기</button>
+<button type="button" id="admin-pin-submit-btn" data-action="admin-submit-pin" class="bg-[#5BC0BE] hover:bg-[#4aa9a7] text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition">확인</button>
+</div>
+</div>
+<!-- 사용자 관리 목록 -->
+<div id="teacher-list-screen" class="hidden">
+<div class="flex items-center justify-between gap-2 mb-4">
+<h2 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-users-gear text-[#5BC0BE]"></i> 사용자 관리</h2>
+<button type="button" data-action="admin-back-to-lobby" class="text-[11px] font-bold text-slate-400 hover:text-slate-300 transition shrink-0">대기실로 돌아가기</button>
+</div>
+<p id="admin-list-message" class="hidden text-emerald-300 text-xs font-semibold mb-3"></p>
+<p id="admin-list-error" class="hidden text-rose-300 text-xs font-semibold mb-3"></p>
+<div id="admin-profile-list" class="space-y-2"></div>
+</div>
 </div>
 
 <!-- ===== STAGE B: 학습 홈 (studentVerification === 'verified' 일 때만 보인다) ===== -->

@@ -1,9 +1,8 @@
 // 이벤트 위임. index.html 의 [data-action] 요소 클릭을 document 하나에서 받아 처리기로 넘긴다.
 // 지금 연결된 action: 로비 선택(select-license-class / select-track(A,B,C) / select-subject-b,
 // 연도·회차 select 와 Track A 과목 체크박스의 change), 시작(start-selected-exam, Track A/B), 문제 화면 조작
-// (mark-answer / prev-question / next-question), Track B 정답 확인, Track A 제출/결과/복습, 로비 복귀(logout-to-lobby).
-// 나머지는 이후 단계에서 채운다.
-// (교사용 action 은 두지 않는다.)
+// (mark-answer / prev-question / next-question), Track B 정답 확인, Track A 제출/결과/복습, 로비 복귀(logout-to-lobby),
+// 교사용 사용자 관리(admin-*, admin-actions.js).
 
 import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.js';
 import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack, toggleSubjectA } from './lobby-actions.js';
@@ -26,6 +25,17 @@ import {
   returnToSummaryList,
   reviewTrackAQuestion,
 } from './track-a-actions.js';
+import {
+  cancelDeleteProfile,
+  cancelEditProfile,
+  closeAdminScreen,
+  confirmDeleteProfile,
+  openAdminPin,
+  saveEditProfile,
+  startDeleteProfile,
+  startEditProfile,
+  submitAdminPin,
+} from './admin-actions.js';
 
 const notImplemented = null;
 
@@ -67,6 +77,18 @@ export const actionHandlers = {
   'start-diagnosis-retry': () => startDiagnosisRetryAction(), // 선택한 학습영역의 오답만 Track C 로 다시 풀기
   // "새 문제로 도전하기"(startRelatedLearning)는 이 화면(나누어 소탕하기의 topic 선택)에는 더 이상 없다 -
   // 오답소탕 완료 화면의 'start-new-problems-from-completion' 으로 옮겨졌다(위 참고, 중복 제거).
+
+  // 교사용 사용자 관리 (admin-actions.js) - 사전등록/접근제한 시스템이 아니다. 학번/이름 오타 수정, 불필요한
+  // profile 삭제만 한다. PIN 은 메모리에만 유지(local-auth.js 와 무관, localStorage 저장 없음).
+  'admin-open-pin': () => openAdminPin(), // 학생 확인 화면 하단 "교사 관리"
+  'admin-submit-pin': () => submitAdminPin(), // PIN 화면의 "확인" - list RPC 성공 자체가 PIN 검증
+  'admin-back-to-lobby': () => closeAdminScreen(), // "대기실로 돌아가기" - PIN/목록 등 관리자 상태 전부 초기화
+  'admin-start-edit': ({ value }) => startEditProfile(value), // data-value: profile.id
+  'admin-cancel-edit': () => cancelEditProfile(),
+  'admin-save-edit': ({ value }) => saveEditProfile(value), // data-value: profile.id
+  'admin-start-delete': ({ value }) => startDeleteProfile(value), // data-value: profile.id (삭제 확인 문구만 연다)
+  'admin-cancel-delete': () => cancelDeleteProfile(),
+  'admin-confirm-delete': ({ value }) => confirmDeleteProfile(value), // data-value: profile.id
 };
 
 // <select> 값이 바뀔 때 쓰는 action. change 이벤트로만 처리하고, value 는 선택한 option 의 값이다.
@@ -75,6 +97,7 @@ export const changeHandlers = {
   'select-exam-round': ({ value }) => changeExamRound(value),
   'check-identity': () => checkIdentityForSession(), // 학번/이름 입력 확정(blur, Enter) -> 최근 세션 확인
   'toggle-subject-a': ({ value, element }) => toggleSubjectA(value, element.checked), // Track A 과목 체크박스
+  'admin-pin-confirm': () => submitAdminPin(), // PIN 입력 확정(blur, Enter) - 학번/이름의 check-identity 와 같은 관례
 };
 
 function dispatch(table, event, getValue) {

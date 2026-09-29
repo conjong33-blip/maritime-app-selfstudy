@@ -46,9 +46,12 @@ export function renderStudentVerification() {
 
   // 2단계 화면 전환: 확인 전에는 학생 확인 화면만, verified 되면 학습 홈만 보인다. 같은 SPA 안에서
   // state 값 하나(studentVerification)로 show/hide 만 한다 - 새 페이지/router 는 만들지 않는다.
+  // 교사 관리(state.admin.screen)가 열려 있는 동안에는 이 둘을 전부 숨긴다 - admin-view.js 의
+  // renderAdminScreen() 이 그 대신 PIN/사용자 관리 화면을 보인다(admin-actions.js 가 두 render 를 항상 같이 부른다).
+  const adminActive = state.admin.screen !== 'closed';
   const verified = state.studentVerification === 'verified';
-  byId('student-verify-screen')?.classList.toggle('hidden', verified);
-  byId('learning-home')?.classList.toggle('hidden', !verified);
+  byId('student-verify-screen')?.classList.toggle('hidden', adminActive || verified);
+  byId('learning-home')?.classList.toggle('hidden', adminActive || !verified);
   const infoText = byId('student-info-text');
   if (infoText && verified && state.profile) {
     infoText.textContent = `${state.profile.studentNo} · ${state.profile.studentName}`;

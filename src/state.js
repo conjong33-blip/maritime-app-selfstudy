@@ -92,6 +92,19 @@ function createInitialState() {
     // { trackType, licenseClass, subject, selectedSubjects, year, examRound, questionIds,
     //   currentQuestionId, currentQuestionIndex, updatedAt } 또는 null. profile 과는 별개다.
     session: null,
+    // 교사용 "사용자 관리" (admin-actions.js/admin-view.js). 사전등록/접근제한 시스템이 아니다 - 학생의
+    // 학번+이름 자유 로그인 정책과는 완전히 별개로, profile 의 학번/이름을 고치거나(기록 유지) 삭제만 한다.
+    admin: {
+      screen: 'closed', // 'closed' | 'pin' | 'list' - 이 값 하나로 B(PIN)/C(목록) 화면을 오간다(새 라우터 없음)
+      pin: '', // PIN 화면에서 확인에 성공한 값을 메모리로만 들고 있는다(수정/삭제 RPC 에 재사용) -
+      // localStorage/sessionStorage 에는 절대 저장하지 않는다. "대기실로 돌아가기"/새로고침 시 반드시 비운다.
+      profiles: [], // [{ id, studentNo, studentName }] - list RPC 응답 그대로 (오답수/세션 등은 이번에 안 가져온다)
+      loading: false, // PIN 확인/목록 조회/수정/삭제 RPC 진행 중
+      error: '', // PIN 오류 등 학생/교사용 안내 문구(기술 용어 없음) - 새 시도를 시작하면 지운다
+      message: '', // 수정/삭제 성공 안내("학생 정보를 수정했습니다." 등)
+      editingId: null, // 지금 인라인 수정 폼이 열려 있는 profile.id (없으면 null)
+      deletingId: null, // 삭제 확인 문구가 열려 있는 profile.id (없으면 null)
+    },
   };
 }
 
