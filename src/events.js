@@ -16,7 +16,6 @@ import {
   selectDiagnosisSubject,
   selectDiagnosisTopic,
   startDiagnosisRetryAction,
-  startRelatedLearning,
   startRelatedLearningFromCompletion,
 } from './diagnosis-actions.js';
 import {
@@ -66,7 +65,8 @@ export const actionHandlers = {
   'select-diagnosis-subject': ({ value }) => selectDiagnosisSubject(value), // data-value: 과목명
   'select-diagnosis-topic': ({ value }) => selectDiagnosisTopic(value), // data-value: learning_topic
   'start-diagnosis-retry': () => startDiagnosisRetryAction(), // 선택한 학습영역의 오답만 Track C 로 다시 풀기
-  'start-related-learning': () => startRelatedLearning(), // 같은 학습영역의 다른 문제(최대 5개, active 오답 제외) 학습
+  // "새 문제로 도전하기"(startRelatedLearning)는 이 화면(나누어 소탕하기의 topic 선택)에는 더 이상 없다 -
+  // 오답소탕 완료 화면의 'start-new-problems-from-completion' 으로 옮겨졌다(위 참고, 중복 제거).
 };
 
 // <select> 값이 바뀔 때 쓰는 action. change 이벤트로만 처리하고, value 는 선택한 option 의 값이다.
