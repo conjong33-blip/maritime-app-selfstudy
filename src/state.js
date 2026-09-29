@@ -30,8 +30,10 @@ function createInitialQuizState() {
     licenseClass: null,
     clearStatus: {},
     completion: null,
-    // 내 학습 진단의 "내가 틀린 문제 다시풀기"로 들어온 회차만 { subject, topic } (완료 문구에 학습영역 이름을 보여주는 데만 쓴다).
-    // 일반 오답소탕(급수만 선택)이나 급수 전체 재시작(restartTrackC)에서는 null.
+    // 내 학습 진단의 "내가 틀린 문제 다시풀기"로 들어온 회차만 { subject, topic } - 완료 문구에 학습영역
+    // 이름을 보여주고, 완료 화면의 "새 문제로 도전하기" 버튼을 보일지 정하는 데 쓴다(diagnosis-actions.js
+    // 의 startRelatedLearningFromCompletion). 일반 오답소탕(급수만 선택, "한번에 소탕하기")에서는 null -
+    // 여러 학습영역이 섞여 있어 하나를 고를 수 없으므로 그 버튼을 보이지 않는다.
     diagnosisContext: null,
     reviewing: false, // 제출 후 결과 목록이 아니라 오답 한 문제의 복습 화면을 보고 있으면 true
   };

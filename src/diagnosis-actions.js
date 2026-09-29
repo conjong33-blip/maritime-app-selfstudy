@@ -14,7 +14,7 @@ import { fetchQuestionsByLearningTopic } from './data/questions.js';
 import { startDiagnosisRetry } from './track-c-actions.js';
 import { renderDiagnosisDetail, renderDiagnosisSummary } from './diagnosis-view.js';
 import { renderCurrentQuestion } from './quiz-renderer.js';
-import { showQuiz } from './view.js';
+import { showQuiz, showQuizMessage } from './view.js';
 
 const RELATED_QUESTIONS_LIMIT = 5;
 // active 오답 제외/최대 5개 제한 전에 넉넉히 후보를 읽어 온다 (READ ONLY, questions 만 조회).
@@ -80,9 +80,13 @@ export async function startDiagnosisRetryAction() {
 }
 
 // [관련 문제 학습하기] - Track B 채점 엔진 재사용, active 오답은 제외, 최대 5문제, session 저장 없음.
-export async function startRelatedLearning() {
-  const selection = currentSelection();
-  if (!selection || !state.profile) return;
+// selectionOverride 를 주면 그 학습영역을 쓰고(예: 오답소탕 완료 화면의 "새 문제로 도전하기" -
+// startRelatedLearningFromCompletion 참고), 생략하면 "나누어 소탕하기" 패널에서 학생이 지금 고른
+// 선택(currentSelection())을 쓴다(기존 동작 그대로). 반환값 { ok, message } 로 실패/빈 결과를 호출한
+// 쪽이 각자 맞는 자리에 보여줄 수 있게 한다 - 실패 시에도 기존처럼 진단 패널 메시지는 그대로 채워 둔다.
+export async function startRelatedLearning(selectionOverride) {
+  const selection = selectionOverride ?? currentSelection();
+  if (!selection || !state.profile) return { ok: false };
   setDiagnosisMessage('');
   try {
     const rows = await fetchQuestionsByLearningTopic({
@@ -94,8 +98,9 @@ export async function startRelatedLearning() {
     const activeIds = new Set(state.wrongPool.activeQuestionIds);
     const candidates = rows.filter((row) => !activeIds.has(row.id)).slice(0, RELATED_QUESTIONS_LIMIT);
     if (candidates.length === 0) {
-      setDiagnosisMessage('지금은 추가로 학습할 관련 문제가 없습니다.');
-      return;
+      const message = '지금은 추가로 학습할 관련 문제가 없습니다.';
+      setDiagnosisMessage(message);
+      return { ok: false, message };
     }
     // 로비의 급수/과목 선택도 방금 학습한 내용에 맞춰 둔다(대기실로 돌아왔을 때 화면이 어긋나지 않게).
     // 연도/회차는 여러 시험지에 걸쳐 있을 수 있어 하나로 정할 수 없으므로 건드리지 않는다.
@@ -107,7 +112,28 @@ export async function startRelatedLearning() {
     state.quiz.currentIndex = 0;
     showQuiz(`${state.profile.studentNo} (${state.profile.studentName})`);
     renderCurrentQuestion();
+    return { ok: true };
   } catch (error) {
-    setDiagnosisMessage(`관련 문제를 불러오지 못했습니다. (${error.message})`);
+    const message = `관련 문제를 불러오지 못했습니다. (${error.message})`;
+    setDiagnosisMessage(message);
+    return { ok: false, message };
   }
+}
+
+// [오답소탕 완료 화면의 "새 문제로 도전하기"] - "나누어 소탕하기"(이 영역 오답 소탕)로 들어와 끝난 회차에서만
+// 쓴다. 방금 끝낸 회차의 급수/과목/학습영역(state.quiz.completion.diagnosisContext)을 그대로 넘겨
+// startRelatedLearning 을 재사용한다 - 새 query/엔진을 따로 만들지 않는다. 여러 학습영역이 섞인 완료
+// ("한번에 소탕하기")에는 diagnosisContext 가 없으므로, 그 경우 이 버튼 자체를 track-c-view.js 가 그리지
+// 않는다(임의로 학습영역 하나를 골라 시작하지 않는다).
+export async function startRelatedLearningFromCompletion() {
+  if (state.currentTrack !== 'C' || state.view !== 'quiz') return;
+  const completion = state.quiz.completion;
+  if (!completion || completion.error || !completion.diagnosisContext) return;
+  const selection = {
+    licenseClass: completion.licenseClass,
+    subject: completion.diagnosisContext.subject,
+    learningTopic: completion.diagnosisContext.topic,
+  };
+  const result = await startRelatedLearning(selection);
+  if (!result.ok && result.message) showQuizMessage(result.message, 'warning');
 }

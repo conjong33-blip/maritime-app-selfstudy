@@ -24,7 +24,6 @@ import {
   hideConnectionError,
   showConnectionError,
   showQuiz,
-  showQuizMessage,
   showStartMessage,
 } from './view.js';
 
@@ -397,38 +396,4 @@ export async function finishTrackC() {
     isFinishing = false;
   }
   redrawCurrent();
-}
-
-// 마무리 후에도 지금 급수에 오답이 남아 있을 때: 같은 급수의 지금 active 오답으로 다시 시작한다.
-// (다른 급수로 자동 전환하지 않는다 - 학생이 로비/완료 화면에서 직접 다른 급수를 선택해야 한다.)
-export async function restartTrackC() {
-  if (state.currentTrack !== 'C' || state.view !== 'quiz' || isFinishing) return;
-  const quiz = state.quiz;
-  const profile = state.profile;
-  const licenseClass = quiz.licenseClass;
-  if (!profile || !licenseClass) return;
-  isFinishing = true;
-  try {
-    await whenWritesIdle();
-    const set = await loadActiveSet(profile.profileKey);
-    if (state.quiz !== quiz) return;
-    if (set.missing) {
-      applyActive(profile.profileKey, set.active, []);
-      showQuizMessage(MISSING_MESSAGE, 'error');
-      return;
-    }
-    applyActive(profile.profileKey, set.active, set.questions);
-    const filtered = set.questions.filter((question) => question.license_class === licenseClass);
-    if (filtered.length === 0) {
-      quiz.completion = computeCompletion(licenseClass, set.questions);
-      redrawCurrent();
-      return;
-    }
-    enterTrackC(profile, filtered, licenseClass);
-  } catch (error) {
-    if (state.quiz !== quiz) return;
-    showQuizMessage(`오답 목록을 불러오지 못했습니다. (${error.message})`, 'error');
-  } finally {
-    isFinishing = false;
-  }
 }

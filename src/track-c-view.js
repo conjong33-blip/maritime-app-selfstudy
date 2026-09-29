@@ -141,31 +141,38 @@ export function renderTrackCStatus() {
   const text = document.createElement('p');
   text.className = 'text-xs font-semibold text-slate-100 leading-relaxed';
   const buttons = document.createElement('div');
-  buttons.className = 'flex items-center gap-2';
+  buttons.className = 'flex flex-col sm:flex-row items-stretch sm:items-center gap-2';
   // 진단의 "내가 틀린 문제 다시풀기"로 들어온 회차이고, 그 학습영역의 오답을 정말 다 풀었으면 문구에 학습영역 이름을 더해 준다.
-  // 완료/재시작 버튼을 고르는 기준(remainingTotal/remainingInClass, 급수 전체)은 그대로 두고 문구만 바꾼다.
+  // 완료 문구를 고르는 기준(remainingTotal/remainingInClass, 급수 전체)은 그대로 두고 문구만 바꾼다.
   const topicDone = Boolean(completion.diagnosisContext) && completion.remainingInTopic === 0;
   const topicLabel = completion.diagnosisContext?.topic;
   if (completion.error) {
     text.textContent = '남은 오답 수를 확인하지 못했습니다. 잠시 후 다시 확인해 주세요.';
-    buttons.append(actionButton('finish-track-c', '다시 확인', true), actionButton('logout-to-lobby', '대기실로', false));
-  } else if (completion.remainingTotal === 0) {
-    // 모든 급수를 통틀어 active 오답이 0 일 때만 "전체 완료" 로 본다.
-    text.textContent = topicDone
-      ? `${topicLabel} 틀린 문제 복습 완료! 오답소탕도 모두 끝났습니다. ⚓`
-      : '오답소탕 완료! 소탕할 오답이 더 이상 남아 있지 않습니다. ⚓';
-    buttons.append(actionButton('logout-to-lobby', '대기실로 돌아가기', true));
-  } else if (completion.remainingInClass === 0) {
-    // 이번에 풀던 급수만 완료. 다른 급수가 남아 있어도 "전체 완료"라고 하지 않는다.
-    text.textContent = topicDone
-      ? `${topicLabel} 틀린 문제 복습 완료! (다른 급수에 아직 ${completion.remainingTotal}개 남았습니다)`
-      : `${completion.licenseClass} 오답소탕 완료! (다른 급수에 아직 ${completion.remainingTotal}개 남았습니다)`;
-    buttons.append(actionButton('logout-to-lobby', '대기실로 돌아가기', true));
+    buttons.append(actionButton('finish-track-c', '다시 확인', true), actionButton('logout-to-lobby', '오답리스트로', false));
   } else {
-    text.textContent = topicDone
-      ? `${topicLabel} 틀린 문제 복습 완료! (${completion.licenseClass}에 다른 오답 ${completion.remainingInClass}개 남았습니다)`
-      : `${completion.licenseClass} 오답소탕: 아직 ${completion.remainingInClass}개 남아 있습니다.`;
-    buttons.append(actionButton('restart-track-c', '남은 오답 다시 소탕하기', true), actionButton('logout-to-lobby', '대기실로', false));
+    if (completion.remainingTotal === 0) {
+      // 모든 급수를 통틀어 active 오답이 0 일 때만 "전체 완료" 로 본다.
+      text.textContent = topicDone
+        ? `${topicLabel} 틀린 문제 복습 완료! 오답소탕도 모두 끝났습니다. ⚓`
+        : '오답소탕 완료! 소탕할 오답이 더 이상 남아 있지 않습니다. ⚓';
+    } else if (completion.remainingInClass === 0) {
+      // 이번에 풀던 급수만 완료. 다른 급수가 남아 있어도 "전체 완료"라고 하지 않는다.
+      text.textContent = topicDone
+        ? `${topicLabel} 틀린 문제 복습 완료! (다른 급수에 아직 ${completion.remainingTotal}개 남았습니다)`
+        : `${completion.licenseClass} 오답소탕 완료! (다른 급수에 아직 ${completion.remainingTotal}개 남았습니다)`;
+    } else {
+      text.textContent = topicDone
+        ? `${topicLabel} 틀린 문제 복습 완료! (${completion.licenseClass}에 다른 오답 ${completion.remainingInClass}개 남았습니다)`
+        : `${completion.licenseClass} 오답소탕: 아직 ${completion.remainingInClass}개 남아 있습니다.`;
+    }
+    // 주 행동은 "새 문제로 도전하기": 방금 끝낸 학습영역이 분명할 때만(나누어 소탕하기의 "이 영역 오답
+    // 소탕"으로 들어온 회차, diagnosisContext 있음) 보여준다. "한번에 소탕하기"처럼 여러 학습영역이 섞인
+    // 완료는 어느 학습영역을 골라야 할지 알 수 없으므로 억지로 하나를 고르지 않는다(9번 요구) - 이 경우
+    // 보조 행동(오답리스트로)만 남는다. 다른 과목/오답으로 자동 전환하는 "남은 오답 다시 소탕하기"는 없앴다.
+    if (completion.diagnosisContext) {
+      buttons.append(actionButton('start-new-problems-from-completion', '새 문제로 도전하기', true));
+    }
+    buttons.append(actionButton('logout-to-lobby', '오답리스트로', false));
   }
   box.replaceChildren(text, buttons);
   box.classList.remove('hidden');
