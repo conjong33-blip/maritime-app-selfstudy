@@ -5,11 +5,12 @@
 // 저장은 직렬 큐로 처리한다: 한 번에 요청 하나만 나가고, 아직 나가지 않은 저장이 여러 개 쌓이면 마지막 위치 하나만 남긴다.
 // (그래서 next -> next -> prev 를 빠르게 눌러도 오래된 위치가 나중에 DB 를 덮어쓰지 않는다.)
 // 삭제도 같은 큐를 지나므로 앞선 저장이 끝난 뒤에 실행된다. 저장/삭제 실패는 문제 풀이를 막지 않는다.
-import { state, resetQuizState, setCurrentTrack } from './state.js';
+import { resetAppState, state, resetQuizState, setCurrentTrack } from './state.js';
 import { clearSession, getSession, saveSession } from './data/selfstudy.js';
 import { fetchQuestionsByIds } from './data/questions.js';
 import { ensureProfile, isSameIdentity, readIdentity, validateIdentity } from './profile.js';
-import { syncLobbyFromState } from './lobby-actions.js';
+import { clearLoginInfo, readLoginInfo, saveLoginInfo } from './local-auth.js';
+import { resetTrackSelectionUI, syncLobbyFromState } from './lobby-actions.js';
 import { renderCurrentQuestion } from './quiz-renderer.js';
 import { refreshActiveWrongs, resetActiveWrongs } from './track-c-actions.js';
 import {
@@ -17,6 +18,7 @@ import {
   clearStartMessage,
   hideConnectionError,
   hideResumeCard,
+  renderStudentVerification,
   setResumeCardBusy,
   setStartLoading,
   showConnectionError,
@@ -156,8 +158,10 @@ function renderResumeCard() {
 
 let identityRequestId = 0;
 
-// 학번/이름 입력이 확정되면(blur, Enter) 프로필을 확보하고 최근 세션이 있으면 이어하기 카드를 보인다.
-// 키를 누를 때마다 부르지 않는다. 입력이 올바르지 않으면 카드를 숨기고 조용히 끝낸다.
+// 학번/이름 입력이 확정되면(blur, Enter, 또는 상단 "확인" 버튼 클릭) 프로필을 확보하고 최근 세션이 있으면
+// 이어하기 카드를 보인다. 키를 누를 때마다 부르지 않는다. 입력이 올바르지 않으면 카드를 숨기고 조용히 끝낸다.
+// state.studentVerification 은 이 함수의 진행 상황을 그대로 보여주는 화면 전용 표시일 뿐이다 - 실제 프로필
+// 조회/생성(ensureProfile)이나 세션 조회 흐름 자체는 이전과 완전히 같다(사전등록 검증은 아직 없다).
 export async function checkIdentityForSession() {
   if (state.view !== 'lobby' || isBusy) return;
   const requestId = ++identityRequestId;
@@ -165,6 +169,8 @@ export async function checkIdentityForSession() {
   if (validateIdentity(identity) !== null) {
     hideResumeCard();
     resetActiveWrongs();
+    state.studentVerification = 'idle';
+    renderStudentVerification();
     return;
   }
   if (!isSameIdentity(identity)) {
@@ -172,11 +178,18 @@ export async function checkIdentityForSession() {
     state.session = null;
     resetActiveWrongs();
   }
+  state.studentVerification = 'checking';
+  renderStudentVerification();
   try {
     const profile = await ensureProfile(identity);
     if (requestId !== identityRequestId || !isSameCurrentInput(identity)) return;
     if (state.profile?.profileKey !== profile.profileKey) state.session = null;
     state.profile = profile;
+    state.studentVerification = 'verified';
+    renderStudentVerification();
+    // 확인에 성공했을 때만 로그인 유지 정보를 저장한다(실패/에러 상태에서는 저장하지 않는다) - 여기 저장하는
+    // 값은 "누구로 로그인했는지"뿐이고, wrongPool 등 실제 학습 데이터는 항상 Supabase 에서 다시 읽는다.
+    saveLoginInfo({ profileKey: profile.profileKey, studentNo: identity.studentNo, studentName: identity.studentName });
     void refreshActiveWrongs(); // 프로필이 확인되면 남은 오답 수(Track C 카드)도 함께 확인한다
     const session = await getSession(profile.profileKey);
     if (requestId !== identityRequestId || !isSameCurrentInput(identity)) return;
@@ -185,6 +198,8 @@ export async function checkIdentityForSession() {
     renderResumeCard();
   } catch (error) {
     if (requestId !== identityRequestId) return;
+    state.studentVerification = 'idle';
+    renderStudentVerification();
     hideResumeCard();
     showConnectionError(error);
   }
@@ -193,6 +208,46 @@ export async function checkIdentityForSession() {
 function isSameCurrentInput(identity) {
   const now = readIdentity();
   return state.view === 'lobby' && now.studentNo === identity.studentNo && now.studentName === identity.studentName;
+}
+
+// "로그아웃"(구 "학생 변경"): 학습 홈의 화면 상태만 초기 값으로 되돌리고 학생 확인 화면으로 되돌아간다. DB 의
+// profile/오답 기록/세션은 전혀 건드리지 않는다 - "현재 기기에서 학생 확인 상태만 해제"하는 기능이다.
+// 같은 학번/이름으로 다시 확인하면 ensureProfile/getSession 이 그대로 복원한다(기존 프로필 생성/조회 흐름
+// 무수정). resetAppState 가 이미 있는 "전체 상태 초기화" 함수를 그대로 재사용한다 - profile/currentTrack/
+// filters/wrongPool/trackCStage/diagnosis/session/studentVerification 등 state.js 의 createInitialState 가
+// 정의하는 모든 화면 상태가 한 번에 초기값으로 돌아간다. 로그인 유지 정보(local-auth.js)도 함께 지운다 -
+// 지우지 않으면 새로고침 시 자동 로그인이 다시 이 학생으로 복원되어 버린다.
+export function logoutStudent() {
+  clearLoginInfo();
+  resetAppState();
+  const idInput = document.getElementById('student-id-input');
+  const nameInput = document.getElementById('student-name-input');
+  if (idInput) idInput.value = '';
+  if (nameInput) nameInput.value = '';
+  identityRequestId += 1; // 진행 중이던 확인 요청이 있었다면 그 응답은 이제 버린다
+  hideResumeCard();
+  resetTrackSelectionUI(); // filters-container/트랙 카드가 이전 학생 선택 그대로 남아 다음 학생에게 보이지 않게
+  renderStudentVerification();
+}
+
+// 앱 시작 시 한 번 호출한다: 로그인 유지 정보가 있으면 학번/이름 입력을 채우고 기존 확인 흐름
+// (checkIdentityForSession)을 그대로 태운다 - wrongPool 등 실제 데이터는 로컬 값을 신뢰하지 않고
+// 이 흐름을 통해 Supabase 에서 다시 조회한다. 확인에 실패하면(탈퇴/오류 등) 로그인 유지 정보를 지우고
+// 학생 확인 화면을 그대로 둔다 - 빈 학습 홈이나 깨진 화면을 보여주지 않는다.
+export async function attemptAutoLogin() {
+  const saved = readLoginInfo();
+  if (!saved) return;
+  const idInput = document.getElementById('student-id-input');
+  const nameInput = document.getElementById('student-name-input');
+  if (!idInput || !nameInput) return;
+  idInput.value = saved.studentNo;
+  nameInput.value = saved.studentName;
+  await checkIdentityForSession();
+  if (state.studentVerification !== 'verified') {
+    clearLoginInfo();
+    idInput.value = '';
+    nameInput.value = '';
+  }
 }
 
 // 문제 풀이에서 로비로 돌아온 뒤: 저장이 모두 끝나기를 기다렸다가 DB 의 최근 세션으로 카드를 다시 그린다.

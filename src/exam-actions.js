@@ -87,7 +87,8 @@ export async function startSelectedExam() {
   clearStartMessage();
 
   if (state.currentTrack === 'C') {
-    // 오답소탕: 남은 오답을 불러와 시작 (조건 확인은 track-c-actions 가 처리)
+    // "한번에 소탕하기" 탭일 때만 이 버튼이 보인다("나누어 소탕하기"에서는 숨겨진다 - lobby-actions.js).
+    // 선택한 급수의 active 오답 전체로 바로 시작한다(기존 startTrackC 그대로, learning_topic 필터 없음).
     isStarting = true;
     setStartLoading(true);
     try {

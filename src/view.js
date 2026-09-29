@@ -15,6 +15,46 @@ export function renderView() {
   byId('header-student-badge').classList.add('hidden');
 }
 
+// 상단 "확인" 버튼: state.studentVerification 을 그대로 보여준다 (계산은 session-actions.js 가 한다).
+// 실제 사전등록 검증은 아직 연결하지 않았으므로 'invalid' 는 지금 쓰이지 않는다 - 여기서는 표시만 준비해 둔다.
+const VERIFY_BTN_IDLE = 'bg-[#5BC0BE] hover:bg-[#4aa9a7] text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition';
+const VERIFY_BTN_CHECKING = 'bg-[#5BC0BE]/50 text-slate-950/70 font-black px-5 py-2 rounded-xl text-xs cursor-wait';
+const VERIFY_BTN_VERIFIED = 'bg-emerald-600 text-white font-black px-5 py-2 rounded-xl text-xs cursor-default';
+const VERIFY_BTN_INVALID = 'bg-rose-950/60 border border-rose-500/50 text-rose-300 font-black px-5 py-2 rounded-xl text-xs transition';
+
+export function renderStudentVerification() {
+  const btn = byId('student-verify-btn');
+  if (btn) {
+    if (state.studentVerification === 'verified') {
+      btn.className = VERIFY_BTN_VERIFIED;
+      btn.textContent = '확인 완료 ✓';
+      btn.disabled = true;
+    } else if (state.studentVerification === 'checking') {
+      btn.className = VERIFY_BTN_CHECKING;
+      btn.textContent = '확인 중…';
+      btn.disabled = true;
+    } else if (state.studentVerification === 'invalid') {
+      btn.className = VERIFY_BTN_INVALID;
+      btn.textContent = '확인';
+      btn.disabled = false;
+    } else {
+      btn.className = VERIFY_BTN_IDLE;
+      btn.textContent = '확인';
+      btn.disabled = false;
+    }
+  }
+
+  // 2단계 화면 전환: 확인 전에는 학생 확인 화면만, verified 되면 학습 홈만 보인다. 같은 SPA 안에서
+  // state 값 하나(studentVerification)로 show/hide 만 한다 - 새 페이지/router 는 만들지 않는다.
+  const verified = state.studentVerification === 'verified';
+  byId('student-verify-screen')?.classList.toggle('hidden', verified);
+  byId('learning-home')?.classList.toggle('hidden', !verified);
+  const infoText = byId('student-info-text');
+  if (infoText && verified && state.profile) {
+    infoText.textContent = `${state.profile.studentNo} · ${state.profile.studentName}`;
+  }
+}
+
 // 문제 풀이 화면으로 전환. studentLabel 은 V65 처럼 숨겨진 학번 배지 텍스트에 넣어 둔다.
 export function showQuiz(studentLabel) {
   state.view = 'quiz';

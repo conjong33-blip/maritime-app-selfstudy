@@ -41,6 +41,10 @@ function createInitialState() {
   return {
     view: 'lobby', // 지금 보이는 화면: 'lobby' | 'quiz'
     profile: null, // 학번+이름으로 확인한 프로필 (연결 이후에 채운다)
+    // 상단 "확인" 버튼 표시 상태: 'idle' | 'checking' | 'verified' | 'invalid'. 지금은 session-actions.js 의
+    // checkIdentityForSession(기존 profile 조회/생성 흐름 그대로)이 idle/checking/verified 만 오간다.
+    // 'invalid'는 향후 selfstudy_students 사전등록 검증을 연결할 때 쓸 자리만 미리 마련해 둔 것이다.
+    studentVerification: 'idle',
     licenseClass: '3급', // V65 최초 화면과 동일: 3급 선택 상태
     currentTrack: null,
     filters: {
@@ -67,7 +71,13 @@ function createInitialState() {
       profileKey: null, // 위 목록이 어느 프로필의 것인지
       loaded: false, // 한 번이라도 DB 에서 읽었는지 (프로필 확인 전에는 false)
     },
-    // "내 학습 진단" 로비 패널의 화면 전용 선택 상태 (DB 에 저장하지 않는다, wrongPool 이 바뀌면 다시 계산한다).
+    // 오답소탕 상단 탭: 'full'(한번에 소탕하기, 기본값) | 'byTopic'(나누어 소탕하기). 별도 중간 화면 없이 이 값 하나로
+    // track-c-options 안의 콘텐츠(급수 버튼 <-> 급수/과목/학습영역 패널)와 하단 메인 CTA 표시 여부를 즉시 바꾼다.
+    // 화면 전용이며 DB 에 저장하지 않는다. lobby-actions.js 의 selectTrack 이 Track C 를 새로 선택할 때 'full' 로 되돌리되,
+    // 이미 Track C 안에서 탭만 바꾸는 경우(track-c-actions.js 의 selectTrackCMode)에는 건드리지 않는다.
+    trackCStage: 'full',
+    // "나누어 소탕하기"(구 "내 학습 진단") 패널의 화면 전용 선택 상태 (DB 에 저장하지 않는다, wrongPool 이 바뀌면 다시 계산한다).
+    // 집계/선택 로직은 그대로 재사용한다 - track-c-actions.js 의 selectTrackCMode 가 expanded 만 켜고 끈다.
     diagnosis: {
       profileKey: null, // 이 선택이 어느 프로필 것인지 (다른 프로필이면 전부 초기화한다)
       expanded: false, // 상세 패널(급수->과목->학습영역)이 열려 있는지

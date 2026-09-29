@@ -48,10 +48,7 @@
 <div class="absolute -top-40 -right-40 w-80 h-80 bg-[#5BC0BE]/10 rounded-full blur-3xl"></div>
 <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-[#3A506B]/20 rounded-full blur-3xl"></div>
 <div class="relative z-10">
-<div class="text-right mb-4">
-<span class="text-[#5BC0BE] font-bold text-xs uppercase tracking-widest bg-[#5BC0BE]/10 px-3 py-1 rounded-full border border-[#5BC0BE]/20">Smart LMS Platform</span>
-</div>
-<!-- Debug Connection Error Box -->
+<!-- Debug Connection Error Box - 학생 확인/학습 홈 어느 화면에서든 보일 수 있다 -->
 <div id="connection-error-box" class="hidden mb-6 bg-rose-950/40 border border-rose-600/40 text-rose-200 p-4 rounded-2xl text-xs flex flex-col gap-2">
 <div class="flex items-center gap-2">
 <i class="fa-solid fa-circle-exclamation text-rose-400 text-base"></i>
@@ -59,8 +56,17 @@
 </div>
 <p id="connection-error-message" class="text-slate-400 font-mono pl-6"></p>
 </div>
+
+<!-- ===== STAGE A: 학생 확인 화면 (studentVerification !== 'verified' 일 때만 보인다) =====
+     학번+이름+확인, 이 한 가지 행동만 하게 한다 - 응시 자격/이어서 공부하기/학습 트랙/오답소탕은 전부 숨긴다. -->
+<div id="student-verify-screen">
+<div class="text-right mb-4">
+<span class="text-[#5BC0BE] font-bold text-xs uppercase tracking-widest bg-[#5BC0BE]/10 px-3 py-1 rounded-full border border-[#5BC0BE]/20">Smart LMS Platform</span>
+</div>
+<div class="max-w-md mx-auto bg-[#0B132B]/60 border border-[#3A506B]/40 rounded-2xl p-5 md:p-6">
+<h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2"><i class="fa-solid fa-id-card-clip text-[#5BC0BE]"></i> 학생 확인</h2>
 <!-- Student ID & Name Entry Grid -->
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 <div class="bg-[#0B132B] p-3.5 rounded-2xl border border-[#3A506B]/40">
 <label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1.5">학번 입력</label>
 <div class="relative">
@@ -82,58 +88,41 @@ class="w-full bg-[#1C2541] border border-[#3A506B] rounded-xl py-2 pl-11 pr-4 te
 </div>
 </div>
 </div>
-<!-- COMPACT RESUME BANNER (session 이 있을 때만 보인다) -->
-<div id="resume-prompt-card" class="hidden mb-3 bg-emerald-950/30 border border-emerald-500/30 rounded-xl px-3 py-2 flex items-center justify-between gap-2 animate-fadeIn">
+<!-- 학생 확인 버튼: 이번 단계는 UI 상태만(기존 check-identity 흐름을 그대로 재사용) - 사전등록 검증 API 는 다음 작업에서 연결 -->
+<div class="flex justify-end">
+<button type="button" id="student-verify-btn" data-action="verify-student" class="bg-[#5BC0BE] hover:bg-[#4aa9a7] text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition">확인</button>
+</div>
+</div>
+</div>
+
+<!-- ===== STAGE B: 학습 홈 (studentVerification === 'verified' 일 때만 보인다) ===== -->
+<div id="learning-home" class="hidden">
+<!-- compact 학생정보: 큰 입력 카드 대신 이름/학번 + 로그아웃만 보인다 -->
+<div class="mb-4 flex items-center justify-between gap-2">
+<span class="text-xs font-bold text-slate-300 flex items-center gap-1.5 min-w-0">
+<i class="fa-solid fa-circle-user text-[#5BC0BE]"></i>
+<span id="student-info-text" class="truncate"></span>
+</span>
+<button type="button" data-action="logout-student" class="text-[11px] font-bold text-slate-400 hover:text-rose-300 transition shrink-0 flex items-center gap-1">
+<i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i> 로그아웃
+</button>
+</div>
+<!-- COMPACT RESUME BANNER (session 이 있을 때만 보인다) - 응시 자격보다 위, 학생이 가장 먼저 보게 한다.
+     단, 학습 트랙/응시 자격보다 강하게 보이지 않는 "알림 + 빠른 실행" 성격의 compact 카드로 유지한다. -->
+<div id="resume-prompt-card" class="hidden mb-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 animate-fadeIn">
 <div class="min-w-0">
-<p class="text-[10px] font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1">
-<i class="fa-solid fa-clock-rotate-left"></i> 이어서 공부하기
+<p class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+<i class="fa-solid fa-clock-rotate-left text-[11px]"></i> 중단된 학습
 </p>
-<p class="text-xs font-bold text-white truncate">
+<p class="text-[11px] font-semibold text-slate-400 truncate mt-0.5">
 <span id="resume-session-info"></span>
-<span id="resume-session-detail" class="hidden sm:inline text-slate-400 font-medium"></span>
+<span id="resume-session-detail" class="hidden sm:inline text-slate-500 font-medium"></span>
 </p>
 </div>
 <div class="flex items-center gap-1.5 shrink-0">
-<button data-action="resume-session" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-lg text-[11px] transition whitespace-nowrap">이어하기</button>
+<button data-action="resume-session" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition whitespace-nowrap">이어서 학습</button>
 <button data-action="clear-and-start-fresh" class="text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap">새로 시작</button>
 </div>
-</div>
-<!-- MY LEARNING DIAGNOSIS: compact summary (자가진단 리포트를 발전시킨 영역, 급수/과목/개념 상세는 아래 detail panel) -->
-<div id="self-diagnosis-card" class="hidden mb-3 bg-indigo-950/30 border border-indigo-500/30 rounded-xl px-3.5 py-2.5 space-y-1 animate-fadeIn">
-<div class="flex items-center justify-between gap-2">
-<span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5"><i class="fa-solid fa-clipboard-list"></i> 내 학습 진단</span>
-<button type="button" data-action="toggle-diagnosis-detail" id="diagnosis-toggle-btn" class="text-indigo-300 hover:text-indigo-200 text-[11px] font-bold underline underline-offset-2">자세히 보기</button>
-</div>
-<p id="diagnosis-summary-line" class="text-[11px] text-slate-300 font-semibold leading-relaxed"></p>
-</div>
-<!-- MY LEARNING DIAGNOSIS: detail panel (급수 -> 과목 -> 우선 복습 영역(오답 기록 기준) -> 학습 시작) -->
-<div id="diagnosis-detail-panel" class="hidden mb-6 bg-[#0B132B] border border-indigo-500/30 rounded-2xl p-4 space-y-4 text-xs animate-fadeIn">
-<div class="flex items-center justify-between">
-<span class="font-bold text-indigo-300">내 학습 진단</span>
-<button type="button" data-action="close-diagnosis-detail" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-xmark"></i></button>
-</div>
-<p id="diagnosis-empty-message" class="hidden text-slate-400 italic"></p>
-<div class="space-y-2">
-<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">급수</label>
-<div id="diagnosis-license-buttons" class="grid grid-cols-2 gap-2"></div>
-</div>
-<div id="diagnosis-subject-step" class="hidden space-y-2">
-<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">과목</label>
-<div id="diagnosis-subject-list" class="space-y-1.5"></div>
-</div>
-<div id="diagnosis-topic-step" class="hidden space-y-2">
-<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide"><span id="diagnosis-topic-subject-label"></span> · 우선 복습 영역 <span class="normal-case font-semibold text-slate-500">(오답 기록 기준)</span></label>
-<div id="diagnosis-topic-list" class="space-y-1.5"></div>
-</div>
-<div id="diagnosis-topic-actions" class="hidden space-y-2 border-t border-[#3A506B]/40 pt-3">
-<p id="diagnosis-selected-topic-label" class="text-slate-300 font-semibold"></p>
-<div class="flex flex-col sm:flex-row gap-2">
-<button type="button" data-action="start-diagnosis-retry" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black px-3 py-2 rounded-lg text-[11px] transition">내가 틀린 문제 다시풀기</button>
-<button type="button" data-action="start-related-learning" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3 py-2 rounded-lg text-[11px] transition">관련 문제 학습하기</button>
-</div>
-<p class="text-[10px] text-slate-500">같은 학습영역이 다른 문제에서 어떻게 출제되는지 확인해보세요.</p>
-</div>
-<p id="diagnosis-message" role="alert" class="hidden text-rose-300 font-semibold"></p>
 </div>
 <!-- Grade Level Class Selection Tab -->
 <div class="mb-6 bg-[#0B132B] p-5 rounded-2xl border border-[#3A506B]/40">
@@ -185,9 +174,17 @@ class="py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132
 </div>
 <!-- Filters Container -->
 <div id="filters-container" class="hidden mt-8 border-t border-[#3A506B]/40 pt-6 space-y-6 animate-fadeIn">
-<div class="flex items-center space-x-2">
+<div class="flex items-center justify-between gap-2 flex-wrap">
+<div class="flex items-center gap-2 flex-wrap">
 <span id="active-track-badge" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400"></span>
-<span class="text-xs text-slate-400 font-medium">세부 학습 필터를 선택해 주세요.</span>
+<span id="active-track-hint" class="text-xs text-slate-400 font-medium">세부 학습 필터를 선택해 주세요.</span>
+</div>
+<!-- 오답소탕(Track C) 전용 - 한번에/나누어 소탕하기. 큰 카드가 아니라 설정 스위치처럼 보이는 compact segmented control.
+     오답소탕 헤더 행 오른쪽 빈 공간에 배치하고, 폭이 부족하면(375px) 자연스럽게 다음 줄로 내려간다. -->
+<div id="track-c-mode-tabs" class="hidden inline-flex ml-auto bg-[#0B132B] border border-[#3A506B] rounded-lg p-0.5 shrink-0" role="tablist">
+<button type="button" data-action="select-track-c-mode" data-value="full" id="track-c-tab-full">한번에 소탕하기</button>
+<button type="button" data-action="select-track-c-mode" data-value="byTopic" id="track-c-tab-bytopic">나누어 소탕하기</button>
+</div>
 </div>
 <!-- Track A Options -->
 <div id="track-a-options" class="hidden space-y-4">
@@ -258,21 +255,52 @@ class="py-3 rounded-xl text-xs font-extrabold border border-[#3A506B] bg-[#0B132
 </div>
 </div>
 </div>
-<!-- Track C Options -->
+<!-- Track C Options: 오답소탕의 유일한 흐름. 상단 탭(한번에/나누어)으로 같은 화면 안에서 콘텐츠만 바뀐다 -
+     별도 "소탕 방법 선택" 중간 화면은 없다. "나누어 소탕하기" 패널은 예전 "내 학습 진단"이 쓰던
+     diagnosis-view.js 렌더를 그대로 재사용한다(id 동일). -->
 <div id="track-c-options" class="hidden space-y-3">
+<!-- "한번에 소탕하기": 급수만 고르면 된다. learning_topic 필터 없이 선택 급수의 active 오답 전체 대상 -->
+<div id="track-c-license-step" class="bg-[#080D1F] border border-[#3A506B]/50 rounded-2xl p-4 space-y-3 text-xs animate-fadeIn">
 <label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1">오답소탕 급수</label>
 <div id="track-c-license-buttons" class="grid grid-cols-2 gap-3"></div>
 <p id="track-c-license-hint" class="text-[11px] text-slate-500"></p>
+</div>
+<!-- "나누어 소탕하기" 패널 (구 "내 학습 진단" 상세 패널 - id/렌더 함수 그대로, 문구만 정리) -->
+<div id="diagnosis-detail-panel" class="hidden bg-[#080D1F] border border-[#3A506B]/50 rounded-2xl p-4 space-y-3 text-xs animate-fadeIn">
+<p id="diagnosis-empty-message" class="hidden text-slate-400 italic"></p>
+<div class="space-y-2">
+<label class="block text-xs font-bold text-[#5BC0BE] uppercase tracking-wider mb-1">오답소탕 급수</label>
+<div id="diagnosis-license-buttons" class="grid grid-cols-2 gap-3"></div>
+</div>
+<div id="diagnosis-subject-step" class="hidden space-y-2">
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">과목</label>
+<div id="diagnosis-subject-list" class="grid grid-cols-2 gap-2"></div>
+</div>
+<div id="diagnosis-topic-step" class="hidden space-y-2">
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide"><span id="diagnosis-topic-subject-label"></span> · 소탕할 학습영역</label>
+<div id="diagnosis-topic-list" class="space-y-1"></div>
+</div>
+<div id="diagnosis-topic-actions" class="hidden space-y-3 border-t border-[#3A506B]/40 mt-1 pt-3">
+<p id="diagnosis-selected-topic-label" class="text-slate-300 font-semibold"></p>
+<div class="flex flex-col sm:flex-row gap-2">
+<button type="button" data-action="start-diagnosis-retry" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-black px-3 py-2 rounded-lg text-[11px] transition">이 영역 오답 소탕</button>
+<button type="button" data-action="start-related-learning" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3 py-2 rounded-lg text-[11px] transition">새 문제로 도전하기</button>
+</div>
+<p class="text-[10px] text-slate-500">같은 학습영역이 다른 문제에서 어떻게 출제되는지 확인해보세요.</p>
+</div>
+<p id="diagnosis-message" role="alert" class="hidden text-rose-300 font-semibold"></p>
+</div>
 </div>
 <!-- Start Exam validation message (입력 누락 안내) -->
 <p id="start-message" role="alert" class="hidden bg-rose-950/40 border border-rose-600/40 text-rose-200 px-4 py-3 rounded-xl text-xs font-semibold"></p>
 <!-- Start Exam Button -->
 <button id="start-exam-btn" data-action="start-selected-exam"
 class="w-full bg-gradient-to-r from-[#5BC0BE] to-[#3A506B] hover:from-[#5BC0BE] hover:to-[#5BC0BE] text-white py-4 rounded-xl font-bold tracking-widest text-sm shadow-lg shadow-[#5BC0BE]/10 hover:shadow-[#5BC0BE]/20 transform active:scale-[0.98] transition flex items-center justify-center gap-2">
-<i class="fa-solid fa-circle-play text-base"></i> 기출문제 로드 및 시험 시작 ⚓
+<i class="fa-solid fa-circle-play text-base"></i> <span id="start-exam-btn-label">기출문제 로드 및 시험 시작 ⚓</span>
 </button>
 </div>
 </div>
+<!-- /learning-home --></div>
 </div>
 <!-- ========================================== -->
 <!-- SYSTEM WORKSPACE (Wide 2-Column Split View) -->

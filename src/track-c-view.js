@@ -32,7 +32,7 @@ function buildLicenseButton(licenseClass, count, selected) {
   button.type = 'button';
   const disabled = count === 0;
   button.className = disabled ? LICENSE_DISABLED : selected ? LICENSE_SELECTED : LICENSE_IDLE;
-  button.textContent = `${licenseClass} · ${count}문제`;
+  button.textContent = `${licenseClass} · 오답 ${count}문제`;
   if (disabled) {
     button.disabled = true;
   } else {
@@ -40,6 +40,25 @@ function buildLicenseButton(licenseClass, count, selected) {
     button.dataset.value = licenseClass;
   }
   return button;
+}
+
+// ---------------------------------------------------------------------
+// 상단 탭 (한번에 소탕하기 / 나누어 소탕하기) - 별도 화면 전환 없이 이 값 하나(state.trackCStage)로
+// 아래 콘텐츠(급수 버튼 <-> diagnosis-view.js 의 급수/과목/학습영역 패널)와 하단 메인 CTA 표시를 바꾼다.
+// ---------------------------------------------------------------------
+// rose accent 는 유지하되 탭에서까지 강한 full-fill(bg-rose-600)을 반복하지 않는다 - 절제된 반투명 dark rose.
+// hover 는 다른 선택 UI(급수/과목 카드)와 같은 패턴: border/text 한 단계 밝아지고 아주 약한 배경 변화만 준다.
+const TAB_ACTIVE =
+  'px-3 py-1.5 rounded-md text-[11px] font-bold border border-rose-500/70 bg-rose-950/40 text-rose-200 transition-all duration-200';
+const TAB_IDLE =
+  'px-3 py-1.5 rounded-md text-[11px] font-bold border border-transparent text-slate-400 hover:border-rose-400/60 hover:text-rose-200 hover:bg-rose-950/10 transition-all duration-200';
+
+function renderTrackCTabs() {
+  const stage = state.trackCStage;
+  const full = byId('track-c-tab-full');
+  const byTopic = byId('track-c-tab-bytopic');
+  if (full) full.className = stage === 'full' ? TAB_ACTIVE : TAB_IDLE;
+  if (byTopic) byTopic.className = stage === 'byTopic' ? TAB_ACTIVE : TAB_IDLE;
 }
 
 // Track C 를 고르지 않았으면 아무것도 하지 않는다 (보이고 숨기는 것은 로비의 공통 트랙 옵션 토글이 담당한다).
@@ -51,6 +70,12 @@ export function renderTrackCFilter() {
   const entries = licenseEntries();
   buttons.replaceChildren(...entries.map(([licenseClass, count]) => buildLicenseButton(licenseClass, count, licenseClass === state.wrongPool.selectedLicenseClass)));
   hint.innerText = state.wrongPool.selectedLicenseClass ? '' : '오답소탕할 급수를 선택해 주세요.';
+
+  renderTrackCTabs();
+  const stage = state.trackCStage;
+  setHidden('track-c-license-step', stage !== 'full'); // "한번에 소탕하기": 급수 버튼만
+  // "나누어 소탕하기"(diagnosis-detail-panel)의 보임/숨김은 diagnosis-view.js 의 renderDiagnosisDetail 이
+  // state.diagnosis.expanded 를 보고 스스로 정한다 - 여기서 별도로 건드리지 않는다.
 }
 
 function retryButton(action, label) {

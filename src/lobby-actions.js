@@ -8,6 +8,7 @@ import { state, setCurrentTrack } from './state.js';
 import { fetchQuestionMetadata } from './data/questions.js';
 import { commonCombinations, resolveFilterSelection } from './utils.js';
 import { renderTrackCFilter } from './track-c-view.js';
+import { renderDiagnosis } from './diagnosis-view.js';
 import { hideConnectionError, showConnectionError } from './view.js';
 
 // V65 와 같은 클래스 문자열
@@ -77,6 +78,27 @@ function renderLicenseClass() {
   byId('btn-class-4').className = state.licenseClass === '4급' ? CLASSES.licenseSelected : CLASSES.licenseIdle;
 }
 
+// 하단 메인 CTA: 모의고사/과목선택은 기존 그대로, 오답소탕은 탭에 따라 다르다.
+//  - "한번에 소탕하기"(trackCStage 'full'): "오답소탕 시작" 표시, 눌러야 exam-actions.js 가 startTrackC 를 부른다.
+//  - "나누어 소탕하기"(trackCStage 'byTopic'): 이미 학습영역을 고르면 그 아래 전용 버튼(이 영역 오답 소탕/새 문제로
+//    도전하기)이 있으므로 이 큰 CTA 는 통째로 숨긴다(세로 공간도 함께 사라진다 - display:none).
+const START_LABELS = { A: '기출문제 로드 및 시험 시작', B: '기출문제 로드 및 시험 시작', C: '오답소탕 시작' };
+function renderStartButtonLabel() {
+  const button = byId('start-exam-btn');
+  const label = byId('start-exam-btn-label');
+  if (!button || !label) return;
+  const hideForByTopic = state.currentTrack === 'C' && state.trackCStage === 'byTopic';
+  button.classList.toggle('hidden', hideForByTopic);
+  label.innerText = `${START_LABELS[state.currentTrack] ?? '기출문제 로드 및 시험 시작'} ⚓`;
+}
+
+// 헤더 행의 안내 문구: A/B 는 기존 문구 그대로, 오답소탕(C)만 학생 친화적인 게임형 문구로 바꾼다.
+const FILTER_HINTS = {
+  A: '세부 학습 필터를 선택해 주세요.',
+  B: '세부 학습 필터를 선택해 주세요.',
+  C: '격파를 기다리는 오답이 남아 있어요. 하나씩 깨뜨려 봐요!',
+};
+
 // Track A/B/C 카드, 상단 배지, 필터 영역 표시.
 function renderTracks() {
   const track = state.currentTrack;
@@ -89,7 +111,12 @@ function renderTracks() {
   const badge = byId('active-track-badge');
   badge.innerText = TRACKS[track].badgeText;
   badge.className = TRACKS[track].badgeClass;
+  const hint = byId('active-track-hint');
+  if (hint) hint.innerText = FILTER_HINTS[track] ?? FILTER_HINTS.A;
+  // 한번에/나누어 소탕하기 탭은 오답소탕(C)일 때만 헤더 행 오른쪽에 보인다.
+  byId('track-c-mode-tabs')?.classList.toggle('hidden', track !== 'C');
   byId('filters-container').classList.remove('hidden');
+  renderStartButtonLabel();
 }
 
 // 과목을 고르기 전에는 HTML 의 초기 카드 스타일을 그대로 둔다 (V65 도 선택 뒤에만 카드 클래스를 다시 썼다).
@@ -114,7 +141,7 @@ export function renderTrackCCard() {
   card.className = CLASSES.trackBase + def.hover + tail;
   const label = byId('track-c-count');
   if (label) {
-    label.innerText = `${count}문제 남음`;
+    label.innerText = `남은 오답 ${count}문제`;
     label.classList.toggle('hidden', !state.wrongPool.loaded || count === 0);
   }
 }
@@ -129,11 +156,23 @@ export function deselectTrackCIfEmpty() {
   renderTrackCLobby();
 }
 
-// Track C 카드 + 급수 선택 필터를 함께 다시 그린다 (wrongPool 이 바뀔 때마다 이 하나만 부르면 된다).
-// 급수 자동 선택 정책은 track-c-actions.js 의 applyActive 가 state.wrongPool 을 만들 때 결정한다.
+// "학생 변경"처럼 state.currentTrack 을 코드에서 직접 null 로 되돌렸을 때 쓴다 - renderTracks() 는
+// state.currentTrack 이 null 이면 아무 일도 하지 않으므로(TRACKS[null] 이 없어 바로 return),
+// filters-container/트랙 카드 3개가 이전 학생이 고르던 모습 그대로 남아 있을 수 있다(다음 학생에게 그대로 보임).
+// 이 함수는 그 화면만 완전한 초기 상태로 되돌린다 - state 는 이미 resetAppState 가 초기화했다고 가정한다.
+export function resetTrackSelectionUI() {
+  byId('filters-container').classList.add('hidden');
+  for (const key of ['A', 'B']) byId(TRACKS[key].cardId).className = CLASSES.trackBase + TRACKS[key].hover;
+  renderTrackCLobby(); // Track C 카드는 (지금은 빈) wrongPool 기준으로 다시 그린다 -> 자동으로 비활성 상태
+}
+
+// Track C 카드 + 급수 선택 필터를 함께 다시 그린다 (wrongPool 이 바뀔 때마다, 또는 상단 탭이 바뀔 때마다 이 하나만
+// 부르면 된다). 급수 자동 선택 정책은 track-c-actions.js 의 applyActive 가 state.wrongPool 을 만들 때 결정한다.
+// 하단 메인 CTA 표시 여부(탭이 'byTopic'이면 숨김)도 탭이 바뀔 때 바로 반영되도록 여기서 함께 갱신한다.
 export function renderTrackCLobby() {
   renderTrackCCard();
   renderTrackCFilter();
+  renderStartButtonLabel();
 }
 
 // Track A 과목 체크박스 표시. state.filters.subjects 를 그대로 보여 준다 (DOM 이 기준이 아니다).
@@ -256,6 +295,17 @@ export function selectLicenseClass(value) {
 export function selectTrack(value) {
   if (!Object.hasOwn(TRACKS, value)) return;
   if (value === 'C' && !hasActiveWrongs()) return;
+  // Track C 를 새로 선택할 때만 기본 탭("한번에 소탕하기")으로 되돌린다 (이미 C 에서 다시 눌러도 고른 탭은 유지 -
+  // 3번 항목: 이미 "나누어 소탕하기"를 보고 있는데 불필요하게 기본 탭으로 되돌리지 않는다).
+  if (value === 'C' && state.currentTrack !== 'C') {
+    state.trackCStage = 'full';
+    state.diagnosis.expanded = false;
+    // diagnosis.expanded 를 여기서 직접 껐으므로, 그 값을 보고 보임/숨김을 정하는 diagnosis-detail-panel
+    // ("나누어 소탕하기" 패널)도 즉시 다시 그려야 한다 - renderTracks()/renderTrackCLobby() 는 이 패널을
+    // 건드리지 않아서, 부르지 않으면 이전에 열려 있던 "나누어 소탕하기" 패널이 새로 고른 "한번에 소탕하기"
+    // 화면과 함께 그대로 남아 보이는 버그가 있었다.
+    renderDiagnosis();
+  }
   setCurrentTrack(value);
   // V65 처럼 처음 Track A 에 들어가면 기관1 이 체크된 상태로 시작한다 (state 가 기준이고 체크박스는 그것을 보여 준다).
   if (value === 'A' && state.filters.subjects.length === 0) state.filters.subjects = [config.trackASubjects[0]];

@@ -9,16 +9,14 @@ import { markAnswer, goToNextQuestion, goToPrevQuestion } from './quiz-actions.j
 import { changeExamRound, changeYear, selectLicenseClass, selectSubjectB, selectTrack, toggleSubjectA } from './lobby-actions.js';
 import { returnToLobby, startSelectedExam } from './exam-actions.js';
 import { checkTrackBAnswer } from './track-b-actions.js';
-import { finishTrackC, restartTrackC, retryClearWrong, selectTrackCLicense } from './track-c-actions.js';
-import { checkIdentityForSession, clearAndStartFresh, resumeRecentSession } from './session-actions.js';
+import { finishTrackC, restartTrackC, retryClearWrong, selectTrackCLicense, selectTrackCMode } from './track-c-actions.js';
+import { logoutStudent, checkIdentityForSession, clearAndStartFresh, resumeRecentSession } from './session-actions.js';
 import {
-  closeDiagnosisDetail,
   selectDiagnosisLicense,
   selectDiagnosisSubject,
   selectDiagnosisTopic,
   startDiagnosisRetryAction,
   startRelatedLearning,
-  toggleDiagnosisDetail,
 } from './diagnosis-actions.js';
 import {
   cancelSubmitTrackA,
@@ -40,6 +38,8 @@ export const actionHandlers = {
   'select-subject-b': ({ value }) => selectSubjectB(value), // data-value: 과목명
   'select-track-c-license': ({ value }) => selectTrackCLicense(value), // data-value: '3급' | '4급' (Track C 오답소탕 급수)
   'start-selected-exam': () => startSelectedExam(), // Track B 만 시작 (문제 로드 + 문제 풀이 화면 전환)
+  'verify-student': () => checkIdentityForSession(), // 상단 "확인" 버튼 - 학번/이름 change 때와 같은 흐름을 다시 탄다
+  'logout-student': () => logoutStudent(), // 학습 홈의 "로그아웃" - 화면 상태+로그인 유지 정보만 초기화, DB profile/오답/세션은 그대로
   'resume-session': () => resumeRecentSession(), // 최근 세션의 문제 세트와 위치로 이어서 학습 (답안은 복원하지 않음)
   'clear-and-start-fresh': () => clearAndStartFresh(), // 최근 세션 삭제 ("아니오")
   'logout-to-lobby': () => returnToLobby(), // 문제 풀이를 끝내고 로비로 (헤더 버튼 2개가 같은 action)
@@ -58,10 +58,9 @@ export const actionHandlers = {
   'finish-track-c': () => finishTrackC(), // Track C 마지막 문제 정리 후 남은 오답을 다시 확인
   'restart-track-c': () => restartTrackC(), // 마무리 후 남은 오답으로 다시 시작
   'retry-track-c-clear': () => retryClearWrong(), // 오답 정리(clearWrong)에 실패한 문제만 다시 저장
+  'select-track-c-mode': ({ value }) => selectTrackCMode(value), // data-value: 'full'(한번에 소탕하기) | 'byTopic'(나누어 소탕하기)
 
-  // 내 학습 진단
-  'toggle-diagnosis-detail': () => toggleDiagnosisDetail(), // 로비 요약 카드의 "자세히 보기"/"접기"
-  'close-diagnosis-detail': () => closeDiagnosisDetail(),
+  // 영역별 오답 소탕 (구 "내 학습 진단" 패널 - 로직/집계 그대로, 진입점만 오답소탕 흐름 안으로 옮겼다)
   'select-diagnosis-license': ({ value }) => selectDiagnosisLicense(value), // data-value: '3급' | '4급'
   'select-diagnosis-subject': ({ value }) => selectDiagnosisSubject(value), // data-value: 과목명
   'select-diagnosis-topic': ({ value }) => selectDiagnosisTopic(value), // data-value: learning_topic

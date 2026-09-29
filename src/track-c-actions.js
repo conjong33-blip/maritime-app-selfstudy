@@ -140,6 +140,7 @@ function applyActive(profileKey, active, questions, { afterOwnRun = false } = {}
 export function resetActiveWrongs({ keepTrack = false } = {}) {
   refreshRequestId += 1;
   state.wrongPool = { activeQuestionIds: [], activeQuestions: [], countsByLicense: {}, selectedLicenseClass: null, profileKey: null, loaded: false, autoSelectAllowed: true };
+  state.trackCStage = 'full';
   resetDiagnosisSelectionFor(null);
   if (!keepTrack) deselectTrackCIfEmpty();
   renderTrackCLobby();
@@ -175,6 +176,28 @@ export function selectTrackCLicense(value) {
   if (count === 0) return;
   state.wrongPool.selectedLicenseClass = value;
   renderTrackCLobby();
+}
+
+// ---------------------------------------------------------------------
+// 상단 탭: 한번에 소탕하기('full') / 나누어 소탕하기('byTopic'). 별도 중간 화면 없이 같은 오답소탕 영역 안에서
+// 콘텐츠만 즉시 바뀐다. "나누어 소탕하기"는 "내 학습 진단"이 쓰던 진단 집계/선택 로직(diagnosis-actions.js,
+// utils.js)을 전혀 바꾸지 않고 그대로 재사용한다 - state.diagnosis.expanded 를 켜고 끄는 것만 이 함수가 한다.
+// ---------------------------------------------------------------------
+export function selectTrackCMode(mode) {
+  if (state.currentTrack !== 'C' || (mode !== 'full' && mode !== 'byTopic')) return;
+  if (state.trackCStage === mode) return;
+  state.trackCStage = mode;
+  state.diagnosis.expanded = mode === 'byTopic'; // diagnosis-view.js 의 렌더 조건을 그대로 재사용한다
+  if (mode === 'byTopic') {
+    // 급수 선택은 유지한다(같은 급수를 보던 중 탭만 바꾼 것이므로 자연스럽다) - 단 과목/학습영역 선택은 지운다.
+    // 지우지 않으면 이전에 고른 과목/학습영역이 남아 있어 "급수만 골랐는데 과목+학습영역까지 한꺼번에" 나타나 보인다.
+    state.diagnosis.selectedSubject = null;
+    state.diagnosis.selectedTopic = null;
+    state.diagnosis.message = '';
+  }
+  clearStartMessage(); // 예: "급수를 선택해 주세요" 안내가 탭을 바꿔도 남아있지 않게
+  renderTrackCLobby();
+  renderDiagnosis();
 }
 
 // ---------------------------------------------------------------------

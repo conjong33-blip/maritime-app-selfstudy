@@ -5,64 +5,78 @@
 // 취약도 점수/이해도%/정답률/등급 같은 표현은 쓰지 않는다: 문제 수와 "우선 복습"만 보여준다.
 import { config } from './config.js';
 import { state } from './state.js';
-import {
-  groupActiveQuestionsByLearningTopic,
-  groupActiveQuestionsBySubject,
-  pickPriorityLearningTopics,
-  pickPriorityReview,
-} from './utils.js';
+import { groupActiveQuestionsByLearningTopic, groupActiveQuestionsBySubject, pickPriorityLearningTopics } from './utils.js';
 
 const byId = (id) => document.getElementById(id);
 
-const STEP_IDLE =
-  'bg-[#0B132B] border border-[#3A506B] hover:border-indigo-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200';
-const STEP_SELECTED =
-  'bg-indigo-950/60 border-2 border-indigo-500 p-3 rounded-xl text-xs font-black text-indigo-300 shadow-md shadow-indigo-500/10 transition-all duration-200';
-const STEP_DISABLED =
+// 오답소탕 급수: "한번에 소탕하기"(track-c-view.js)와 첫 인상을 동일하게 맞추기 위해 같은 rose 톤/강도를 쓴다
+// (두 모드가 다른 기능처럼 보이지 않도록 - 새 색상을 만들지 않고 이미 쓰는 rose 를 그대로 재사용).
+const LICENSE_IDLE =
+  'bg-[#0B132B] border border-[#3A506B] hover:border-rose-500/60 p-3 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200';
+const LICENSE_SELECTED =
+  'bg-rose-950/60 border-2 border-rose-500 p-3 rounded-xl text-xs font-black text-rose-300 shadow-md shadow-rose-500/10 transition-all duration-200';
+const LICENSE_DISABLED =
   'bg-[#0B132B]/40 border border-[#3A506B]/30 p-3 rounded-xl text-xs font-bold text-slate-600 opacity-50 cursor-not-allowed transition-all duration-200';
 
-const ROW_IDLE =
-  'w-full flex items-center justify-between bg-[#0B132B] border border-[#3A506B] hover:border-indigo-500/60 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200';
-const ROW_SELECTED =
-  'w-full flex items-center justify-between bg-indigo-950/60 border-2 border-indigo-500 px-3 py-2 rounded-xl text-xs font-black text-indigo-300 shadow-md shadow-indigo-500/10 transition-all duration-200';
+// 과목 선택: 급수보다 한 단계 약한 강조(테두리 1px, shadow 없음)로 단계별 강도 차이를 준다.
+const SUBJECT_IDLE =
+  'bg-[#0B132B] border border-[#3A506B] hover:border-indigo-500/60 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 transition-all duration-200';
+const SUBJECT_SELECTED =
+  'bg-indigo-950/50 border border-indigo-500 px-3 py-2 rounded-xl text-xs font-black text-indigo-300 transition-all duration-200';
 
-function buildGridButton({ label, disabled, selected, action, value }) {
+// 우선 복습 영역: 선택 컨트롤과 구분되는 "진단 결과 목록"처럼 보이도록 살짝 넓은 행 여백을 쓴다
+// (색상/테두리 계열, hover/selected 강조는 과목 행과 동일하게 유지한다 - 새 색상 체계를 만들지 않는다).
+const TOPIC_ROW_IDLE =
+  'w-full flex items-start justify-between gap-2 bg-[#0B132B] border border-[#3A506B] hover:border-indigo-500/60 px-3 py-2 rounded-lg text-xs font-bold text-slate-300 transition-all duration-200';
+const TOPIC_ROW_SELECTED =
+  'w-full flex items-start justify-between gap-2 bg-indigo-950/60 border-2 border-indigo-500 px-3 py-2 rounded-lg text-xs font-black text-indigo-300 shadow-md shadow-indigo-500/10 transition-all duration-200';
+
+// 과목 카드: 과목명 + "오답 N문제"를 두 줄로 쌓아 보여준다(긴 가로 row 대신 - 급수 selector 와 시각적 리듬을 맞춘다).
+// 과목명을 먼저 보고 그 다음 오답 수를 보도록 텍스트 위계를 준다(과목명 더 크고 진하게, 오답 수는 더 작고 muted).
+function buildSubjectCard({ subject, count, selected, action, value }) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = disabled ? STEP_DISABLED : selected ? STEP_SELECTED : STEP_IDLE;
-  button.textContent = label;
-  if (disabled) button.disabled = true;
-  else {
-    button.dataset.action = action;
-    button.dataset.value = value;
-  }
+  button.className = selected ? SUBJECT_SELECTED : SUBJECT_IDLE;
+  button.dataset.action = action;
+  button.dataset.value = value;
+  const nameEl = document.createElement('span');
+  nameEl.className = 'block text-sm font-black leading-snug';
+  nameEl.textContent = subject;
+  const detailEl = document.createElement('span');
+  detailEl.className = `block mt-1 text-[10px] font-semibold ${selected ? 'text-indigo-300' : 'text-slate-500'}`;
+  detailEl.textContent = `오답 ${count}문제`;
+  button.append(nameEl, detailEl);
   return button;
 }
 
-function buildRowButton({ label, detail, selected, action, value }) {
+// label 은 길면 2줄까지 자연스럽게 줄바꿈되고(break-keep 로 단어 중간에 끊기지 않게), detail 은 항상 우측 정렬로 고정한다.
+function buildRowButton({ label, detail, selected, action, value, idleClass, selectedClass }) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = selected ? ROW_SELECTED : ROW_IDLE;
+  button.className = selected ? selectedClass : idleClass;
   button.dataset.action = action;
   button.dataset.value = value;
   const labelEl = document.createElement('span');
+  labelEl.className = 'flex-1 min-w-0 text-left break-keep';
   labelEl.textContent = label;
   const detailEl = document.createElement('span');
-  detailEl.className = selected ? 'text-indigo-300 font-semibold' : 'text-slate-500 font-semibold';
+  detailEl.className = `shrink-0 whitespace-nowrap ${selected ? 'text-indigo-300 font-semibold' : 'text-slate-500 font-semibold'}`;
   detailEl.textContent = detail;
   button.append(labelEl, detailEl);
   return button;
 }
 
-function buildTopicButton(row, index, selected) {
-  const button = buildRowButton({
-    label: `${index + 1}. ${row.topic}`,
+// 학생에게는 순위 숫자(1. 2. 3...)를 보여주지 않는다 - 정렬 순서(우선순위) 자체는 topics 배열 순서 그대로 유지된다.
+function buildTopicButton(row, selected) {
+  return buildRowButton({
+    label: row.topic,
     detail: `관련 오답 ${row.count}문제`,
     selected,
     action: 'select-diagnosis-topic',
     value: row.topic,
+    idleClass: TOPIC_ROW_IDLE,
+    selectedClass: TOPIC_ROW_SELECTED,
   });
-  return button;
 }
 
 function noticeLine(text) {
@@ -75,6 +89,8 @@ function noticeLine(text) {
 // ---------------------------------------------------------------------
 // 로비 요약 카드 (V65 자가진단 카드 영역을 재사용)
 // ---------------------------------------------------------------------
+// 접힌 상태는 제목 + 토글 버튼만 남긴다(요약 문구는 학생 화면에 표시하지 않는다 - 진단 데이터 자체는
+// state.wrongPool/state.diagnosis 에 그대로 유지되고, 펼치면 아래 상세 패널에서 그 데이터를 보여준다).
 export function renderDiagnosisSummary() {
   const card = byId('self-diagnosis-card');
   if (!card) return;
@@ -84,36 +100,35 @@ export function renderDiagnosisSummary() {
   }
   card.classList.remove('hidden');
 
-  const counts = state.wrongPool.countsByLicense ?? {};
-  const parts = config.licenseClasses.filter((licenseClass) => (counts[licenseClass] ?? 0) > 0).map((licenseClass) => `${licenseClass} ${counts[licenseClass]}문제`);
-  const line = byId('diagnosis-summary-line');
-  if (parts.length === 0) {
-    line.innerText = '지금은 복습할 오답이 없습니다. 모의고사나 과목별 학습을 먼저 진행해 보세요.';
-  } else {
-    const best = pickPriorityReview(state.wrongPool.activeQuestions, config.licenseClasses, config.trackASubjects);
-    line.innerText = parts.join(' · ') + (best ? ` · 우선 복습: ${best.license} ${best.subject}` : '');
-  }
-
   const toggle = byId('diagnosis-toggle-btn');
-  if (toggle) toggle.innerText = state.diagnosis.expanded ? '접기' : '자세히 보기';
+  if (toggle) toggle.innerText = state.diagnosis.expanded ? '접기' : '펼치기';
 }
 
 // ---------------------------------------------------------------------
 // 상세 패널: 급수 -> 과목 -> 우선 복습 영역(오답 기록 기준, 기본 3개~최대 5개) -> (선택 시) 두 가지 행동
 // ---------------------------------------------------------------------
+function buildLicenseButton(licenseClass, count, selected) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  const disabled = count === 0;
+  button.className = disabled ? LICENSE_DISABLED : selected ? LICENSE_SELECTED : LICENSE_IDLE;
+  button.textContent = `${licenseClass} · 오답 ${count}문제`;
+  if (disabled) {
+    button.disabled = true;
+  } else {
+    button.dataset.action = 'select-diagnosis-license';
+    button.dataset.value = licenseClass;
+  }
+  return button;
+}
+
 function renderLicenseStep() {
   const container = byId('diagnosis-license-buttons');
   if (!container) return;
   const counts = state.wrongPool.countsByLicense ?? {};
   container.replaceChildren(
     ...config.licenseClasses.map((licenseClass) =>
-      buildGridButton({
-        label: `${licenseClass} · ${counts[licenseClass] ?? 0}문제`,
-        disabled: !((counts[licenseClass] ?? 0) > 0),
-        selected: licenseClass === state.diagnosis.selectedLicenseClass,
-        action: 'select-diagnosis-license',
-        value: licenseClass,
-      }),
+      buildLicenseButton(licenseClass, counts[licenseClass] ?? 0, licenseClass === state.diagnosis.selectedLicenseClass),
     ),
   );
 }
@@ -131,9 +146,9 @@ function renderSubjectStep() {
   const subjects = groupActiveQuestionsBySubject(state.wrongPool.activeQuestions, licenseClass, config.trackASubjects);
   list.replaceChildren(
     ...subjects.map((row) =>
-      buildRowButton({
-        label: row.subject,
-        detail: `복습할 문제 ${row.count}`,
+      buildSubjectCard({
+        subject: row.subject,
+        count: row.count,
         selected: row.subject === state.diagnosis.selectedSubject,
         action: 'select-diagnosis-subject',
         value: row.subject,
@@ -157,7 +172,7 @@ function renderTopicStep() {
 
   const { topics, withoutTopic } = groupActiveQuestionsByLearningTopic(state.wrongPool.activeQuestions, licenseClass, subject);
   const visible = pickPriorityLearningTopics(topics); // 기본 3개, 3위와 동률이면 포함, 최대 5개 (전체보기 없음)
-  const rows = visible.map((row, index) => buildTopicButton(row, index, row.topic === selectedTopic));
+  const rows = visible.map((row) => buildTopicButton(row, row.topic === selectedTopic));
   if (visible.length === 0) {
     rows.push(
       noticeLine(
