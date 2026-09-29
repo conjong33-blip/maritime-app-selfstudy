@@ -123,10 +123,60 @@ export function clearQuizSaveError() {
   clearMessage('quiz-save-message');
 }
 
-// 통신 오류 안내 박스 (V65 의 connection-error-box)
+// 통신 오류 안내 박스 (V65 의 connection-error-box) 재사용. 두 가지 톤을 오간다 -
+//   error : 진짜 통신/RPC 오류 - 기존 강한 rose 스타일 그대로 유지.
+//   notice: 학번은 맞지만 이름이 등록된 값과 달라 막힌 경우(db/004_selfstudy_prevent_duplicate_identity.sql) -
+//           "시스템 장애"가 아니라 "입력 확인 안내"이므로 부드러운 teal 톤 + info 아이콘을 쓴다.
+// 어느 쪽을 마지막으로 보여줬든 다음 호출에서 tone/제목/본문/아이콘을 전부 다시 정해서 잔존이 없게 한다.
+const CONNECTION_ERROR_DEFAULT_TITLE = 'Supabase 실시간 데이터베이스 통신 에러 발생';
+const CONNECTION_ERROR_TONE = {
+  error: {
+    box: 'hidden mb-6 bg-rose-950/40 border border-rose-600/40 text-rose-200 p-4 rounded-2xl text-xs flex flex-col gap-2',
+    icon: 'fa-solid fa-circle-exclamation text-rose-400 text-base',
+    message: 'text-slate-400 font-mono pl-6',
+  },
+  notice: {
+    box: 'hidden mb-6 bg-teal-950/40 border border-teal-600/40 text-teal-200 p-4 rounded-2xl text-xs flex flex-col gap-2',
+    icon: 'fa-solid fa-circle-info text-teal-400 text-base',
+    message: 'text-slate-300 pl-6',
+  },
+};
+
+function setConnectionErrorBox({ tone, title, message }) {
+  const cfg = CONNECTION_ERROR_TONE[tone] ?? CONNECTION_ERROR_TONE.error;
+  const box = byId('connection-error-box');
+  const icon = byId('connection-error-icon');
+  const titleEl = byId('connection-error-title');
+  const messageEl = byId('connection-error-message');
+  if (icon) icon.className = cfg.icon;
+  if (titleEl) titleEl.innerText = title;
+  if (messageEl) {
+    messageEl.className = cfg.message;
+    messageEl.innerText = message;
+  }
+  if (box) {
+    box.className = cfg.box;
+    box.classList.remove('hidden');
+  }
+}
+
 export function showConnectionError(error) {
-  byId('connection-error-message').innerText = error instanceof Error ? error.message : String(error);
-  byId('connection-error-box').classList.remove('hidden');
+  setConnectionErrorBox({
+    tone: 'error',
+    title: CONNECTION_ERROR_DEFAULT_TITLE,
+    message: error instanceof Error ? error.message : String(error),
+  });
+}
+
+// 같은 학번에 이미 다른 이름의 학생이 등록돼 있어 새 profile 을 만들지 않았을 때(db/004_selfstudy_
+// prevent_duplicate_identity.sql) 보여주는 안내. 같은 박스를 재사용하되, "오류 코드"/"통신 에러"
+// 같은 기술적인 표현 대신 학생이 이해할 수 있는 문구만 보여준다. 기존 등록 이름은 노출하지 않는다.
+export function showIdentityConflictMessage() {
+  setConnectionErrorBox({
+    tone: 'notice',
+    title: '입력 정보를 확인해 주세요',
+    message: '같은 학번으로 등록된 사용자가 있습니다. 이름을 다시 확인해 주세요.',
+  });
 }
 
 export function hideConnectionError() {

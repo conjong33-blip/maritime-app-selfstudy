@@ -2,11 +2,17 @@
 // selfstudy_* 테이블은 이 RPC 로만 읽고 쓴다 (테이블 직접 접근은 DB 에서 막혀 있다).
 // 순수 데이터 계층: state, DOM, alert 를 건드리지 않는다. 실패하면 DataError 를 던진다.
 //   - 잘못된 profile_key 는 error.code '28000', 잘못된 입력값은 '22023' 으로 온다.
+//   - selfstudy_get_or_create_profile 한정: 같은 student_no 에 이미 다른 이름의 profile 이 있으면
+//     'ST409' (db/004_selfstudy_prevent_duplicate_identity.sql 참고). PostgreSQL 표준 unique_violation
+//     (23505) 은 일부러 쓰지 않는다 - 그 코드는 실제 UNIQUE 제약 위반에도 범용으로 쓰이므로, 재사용하면
+//     그런 일반 오류까지 이 학생 안내 문구로 잘못 처리될 수 있다. 'ST409' 는 이 의도적인 정책 위반만
+//     가리키는 전용 코드다.
 import { DataError, getSupabaseClient, unwrap } from './supabase.js';
 
 export const RPC_ERROR_CODE = {
   INVALID_PROFILE_KEY: '28000',
   INVALID_INPUT: '22023',
+  DUPLICATE_STUDENT_IDENTITY: 'ST409',
 };
 
 function requireProfileKey(profileKey) {

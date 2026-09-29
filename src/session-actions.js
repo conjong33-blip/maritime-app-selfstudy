@@ -6,7 +6,7 @@
 // (그래서 next -> next -> prev 를 빠르게 눌러도 오래된 위치가 나중에 DB 를 덮어쓰지 않는다.)
 // 삭제도 같은 큐를 지나므로 앞선 저장이 끝난 뒤에 실행된다. 저장/삭제 실패는 문제 풀이를 막지 않는다.
 import { resetAppState, state, resetQuizState, setCurrentTrack } from './state.js';
-import { clearSession, getSession, saveSession } from './data/selfstudy.js';
+import { clearSession, getSession, saveSession, RPC_ERROR_CODE } from './data/selfstudy.js';
 import { fetchQuestionsByIds } from './data/questions.js';
 import { ensureProfile, isSameIdentity, readIdentity, validateIdentity } from './profile.js';
 import { clearLoginInfo, readLoginInfo, saveLoginInfo } from './local-auth.js';
@@ -22,6 +22,7 @@ import {
   setResumeCardBusy,
   setStartLoading,
   showConnectionError,
+  showIdentityConflictMessage,
   showQuiz,
   showResumeCard,
   showSessionSaveError,
@@ -201,7 +202,14 @@ export async function checkIdentityForSession() {
     state.studentVerification = 'idle';
     renderStudentVerification();
     hideResumeCard();
-    showConnectionError(error);
+    // 같은 학번에 이미 다른 이름의 profile 이 있어서 막힌 경우(db/004_selfstudy_prevent_duplicate_
+    // identity.sql)만 학생이 이해할 수 있는 안내로 보여준다. 그 외(네트워크/통신 오류 등)는 기존
+    // 그대로 연결 오류 안내를 보여준다 - 오답/세션 등 다른 어떤 데이터도 건드리지 않는다.
+    if (error?.code === RPC_ERROR_CODE.DUPLICATE_STUDENT_IDENTITY) {
+      showIdentityConflictMessage();
+    } else {
+      showConnectionError(error);
+    }
   }
 }
 
